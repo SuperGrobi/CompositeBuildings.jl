@@ -1,6 +1,11 @@
 module CompositeBuildings
+
 using LightOSM
-# Write your package code here.
+using LightXML
+using JSON
+using HTTP
+using Formatting
+
 export SimpleBuilding,
     MultiPolyBuilding,
     SimplePart,
@@ -8,4 +13,6 @@ export SimpleBuilding,
     CompositeBuilding
 include("types.jl")
 
+export download_osm_composite_buildings
+include("building_downloaders.jl")
 end
