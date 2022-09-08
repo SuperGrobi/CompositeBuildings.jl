@@ -13,6 +13,7 @@ export SimpleBuilding,
     CompositeBuilding
 include("types.jl")
 
-export download_osm_composite_buildings
+export download_composite_osm_buildings
 include("building_downloaders.jl")
 end
+       

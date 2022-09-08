@@ -6,10 +6,11 @@ function overpass_composite_building_query(download_method::Symbol, # this feels
     filters = """node["building"]({1});<;way["building"]({1});>;rel["building"]({1});>;"""
     full_filter_string = ""
     if download_method == :place_name
-        for polygon in boundary
+        geojson_polygons = LightOSM.polygon_from_place_name(boundary)
+        for polygon in geojson_polygons
             polygon = map(x -> [x[2], x[1]], polygon) # switch lon-lat to lat-lon
             polygon_str = replace("$polygon", r"[\[,\]]" =>  "")
-            full_filter_string *= format(filters, "poly:" * polygon_str)
+            full_filter_string *= format(filters, """poly:\"$polygon_str\"""")
         end
     elseif download_method == :bbox
         bbox_str =  """$(replace("$boundary", r"[\[ \]]" =>  ""))"""
@@ -28,9 +29,8 @@ end
 function osm_composite_buildings_from_place_name(; place_name::String,
                                                 metadata::Bool=false,
                                                 download_format::Symbol=:osm)::String
-    geojson_polygons = LightOSM.polygon_from_place_name(place_name)
     # TODO: implement our own version of the polygon query
-    query = overpass_composite_building_query(:place_name, geojson_polygons, metadata, download_format)
+    query = overpass_composite_building_query(:place_name, place_name, metadata, download_format)
     return LightOSM.overpass_request(query)
 end
 
@@ -69,12 +69,12 @@ function osm_composite_buildings_downloader(download_method::Symbol)::Function
 end
 
 function download_composite_osm_buildings(download_method::Symbol;
-                                          metadata::Bool:false,
+                                          metadata::Bool=false,
                                           download_format::Symbol=:osm,
                                           save_to_file_location::Union{String, Nothing}=nothing,
                                           download_kwargs...)::Union{XMLDocument, Dict{String,Any}}
     downloader = osm_composite_buildings_downloader(download_method)
-    data = downloader(meatdata=metadata, download_format=download_format; download_kwargs...)
+    data = downloader(metadata=metadata, download_format=download_format; download_kwargs...)
     @info "Downloaded osm composite buildings data from $(["$k: $v" for (k, v) in download_kwargs]) in $download_format format"
 
     if !(save_to_file_location isa Nothing)
