@@ -3,6 +3,9 @@ uuid = "a870b4e5-37c8-4ee1-9e3a-8b7ad2177db1"
 authors = ["Henrik Wolf <henrik-wolf@freenet.de> and contributors"]
 version = "0.1.0"
 
+[deps]
+LightOSM = "d1922b25-af4e-4ba3-84af-fe9bea896051"
+
 [compat]
 julia = "1"
 
