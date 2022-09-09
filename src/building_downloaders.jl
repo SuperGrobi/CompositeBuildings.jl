@@ -3,7 +3,9 @@ function overpass_composite_building_query(download_method::Symbol, # this feels
                                            metadata::Bool=false, 
                                            download_format::Symbol=:osm)::String
 
-    filters = """node["building"]({1});<;way["building"]({1});>;rel["building"]({1});>;"""
+    filters1 = """node["building"]({1});<;way["building"]({1});>;rel["building"]({1});>;"""
+    filters2 = """node["building:part"]({1});<;way["building:part"]({1});>;rel["building:part"]({1});>;"""
+    filters = "($filters1);($filters2);"
     full_filter_string = ""
     if download_method == :place_name
         geojson_polygons = LightOSM.polygon_from_place_name(boundary)

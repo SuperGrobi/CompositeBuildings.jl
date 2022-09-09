@@ -22,5 +22,6 @@ function downloader_tests()
         @test from_point_json isa Dict{String, Any}
     end
 end
-
+# this test needs some internet connection and may fail randomly, when the server does not manage to respond.
+# as long as one test succeeds, things are probably fine.
 downloader_tests()
