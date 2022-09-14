@@ -19,7 +19,8 @@ include("building_downloaders.jl")
 
 export composite_buildings_from_object,
     composite_buildings_from_file,
-    composite_buildings_from_download
-include("building_parses.jl")
+    composite_buildings_from_download,
+    buildings_from_test_area
+include("building_parsers.jl")
 end
        
