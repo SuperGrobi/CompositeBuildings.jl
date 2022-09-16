@@ -71,7 +71,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)#::
             polygon = empty_poly()
             
             # to be a valid polygon, the outer has to be the first one added
-            for member in sort(members, by=x->x["role"] == "outer")
+            for member in sort(members, by=x->x["role"] == "outer", rev=true)
                 way_id = member["ref"]
                 way = ways[way_id]
                 # copy tags from way to tags from relation
@@ -85,6 +85,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)#::
             height, levels = composite_height(tags)
             tags["height"] = height
             tags["levels"] = levels
+            @assert ArchGDAL.isvalid(polygon) "polygon of relation building $rel_id is not valid!"
             buildings[rel_id] = SimpleBuilding{T}(rel_id, polygon, tags)
 
         # parse all multipolygon parts
@@ -94,7 +95,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)#::
             members = relation["members"]
             polygon = empty_poly()
 
-            for member in sort(members, by=x->x["role"] == "outer")
+            for member in sort(members, by=x->x["role"] == "outer", rev=true)
                 way_id = member["ref"]
                 way = ways[way_id]
                 # copy tags from way to tags from relation
@@ -106,6 +107,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)#::
             apply_wsg_84!(polygon)
 
             # TODO: guarantee that relevant tags are present (height, min_height, max_height)...
+            @assert ArchGDAL.isvalid(polygon) "polygon of relation part $rel_id is not valid!"
             building_parts[rel_id] = BuildingPart{T}(rel_id, polygon, tags)
             # TODO: maybe refactor this whole thing into a function?
         end
@@ -121,6 +123,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)#::
             polygon = empty_poly()
             add_way_to_poly!(polygon, way, nodes)
             apply_wsg_84!(polygon)
+            @assert ArchGDAL.isvalid(polygon) "polygon of building $way_id is not valid!"
             buildings[way_id] = SimpleBuilding{T}(way_id, polygon, tags)
 
         elseif haskey(way, "tags") && is_building_part(way["tags"]) && !(way_id in added_ways)
@@ -131,6 +134,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)#::
             polygon = empty_poly()
             add_way_to_poly!(polygon, way, nodes)
             apply_wsg_84!(polygon)
+            @assert ArchGDAL.isvalid(polygon) "polygon of part $way_id is not valid!"
             building_parts[way_id] = BuildingPart{T}(way_id, polygon, tags)
         end
     end
