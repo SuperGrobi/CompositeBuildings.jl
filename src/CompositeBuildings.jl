@@ -5,6 +5,7 @@ using LightXML
 using JSON
 using HTTP
 using Formatting
+using GeoInterface
 
 export SimpleBuilding,
     MultiPolyBuilding,
