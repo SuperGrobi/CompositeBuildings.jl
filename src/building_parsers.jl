@@ -35,7 +35,7 @@ end
 
 function add_way_to_poly!(poly, way, nodes)
     nds = [nodes[n] for n in way["nodes"]]
-    node_tuples = [(i.location.lon, i.location.lat) for i in nds] # TODO!!!!
+    node_tuples = [(i.location.lon, i.location.lat) for i in nds]
     
     linear_ring = ArchGDAL.createlinearring(node_tuples)
     apply_wsg_84!(linear_ring)
