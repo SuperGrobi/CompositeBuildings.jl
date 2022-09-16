@@ -7,7 +7,7 @@ using HTTP
 using Formatting
 using ArchGDAL
 using GeoInterface
-
+using GeoInterfaceRecipes
 
 export SimpleBuilding,
     BuildingPart,
@@ -24,4 +24,3 @@ export composite_buildings_from_object,
     buildings_from_test_area
 include("building_parsers.jl")
 end
-       

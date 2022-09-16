@@ -41,7 +41,7 @@ GeoInterface.isgeometry(::Type{<:AbstractBuilding}) = true
 # set all buildings to be polygons
 GeoInterface.geomtrait(::AbstractBuilding) = GeoInterface.PolygonTrait()
 # basic querys for ngeom and geom of buildings
-GeoInterface.ngeom(::GeoInterface.PolygonTrait, geom::AbstractBuilding)::Integer = 1
+GeoInterface.ngeom(::GeoInterface.PolygonTrait, geom::AbstractBuilding)::Integer = GeoInterface.ngeom(geom.polygon)
 GeoInterface.getgeom(::GeoInterface.PolygonTrait, geom::SimpleBuilding, i) = GeoInterface.getgeom(geom.polygon, i)  # ArchGDAL is zero base, but subtracts this one its own
 GeoInterface.getgeom(::GeoInterface.PolygonTrait, geom::CompositeBuilding, i) = GeoInterface.getgeom(geom.baseBuilding.polygon, i)
 
@@ -54,3 +54,9 @@ GeoInterface.geomtrait(::BuildingPart) = GeoInterface.PolygonTrait()
 # basic querys for ngeom and geom of parts
 GeoInterface.ngeom(::GeoInterface.PolygonTrait, geom::BuildingPart)::Integer = 1
 GeoInterface.getgeom(::GeoInterface.PolygonTrait, geom::BuildingPart, i) = GeoInterface.getgeom(geom.polygon, i)
+
+@enable_geo_plots AbstractBuilding
+@enable_geo_plots BuildingPart
+
+GeoInterface.ncoord(::GeoInterface.PolygonTrait, geom::AbstractBuilding) = 2
+GeoInterface.ncoord(::GeoInterface.PolygonTrait, geom::BuildingPart) = 2
