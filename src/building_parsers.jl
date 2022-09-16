@@ -23,10 +23,28 @@ end
 
 const BuildingDict = Dict{Integer, CompositeBuildings.AbstractBuilding}
 
+# it is, for some reason, impossible to define this as a constant...
+OSM_ref() = ArchGDAL.importEPSG(4326) # TODO: figure out the correct order.
+empty_poly() = ArchGDAL.createpolygon()
+
+function apply_wsg_84!(geom)
+    ArchGDAL.createcoordtrans(OSM_ref(), OSM_ref()) do trans
+        ArchGDAL.transform!(geom, trans)
+    end
+end
+
+function add_way_to_poly!(poly, way, nodes)
+    nds = [nodes[n] for n in way["nodes"]]
+    node_tuples = [(i.location.lon, i.location.lat) for i in nds] # TODO!!!!
+    
+    linear_ring = ArchGDAL.createlinearring(node_tuples)
+    apply_wsg_84!(linear_ring)
+    ArchGDAL.addgeom!(poly, linear_ring)
+end
+
 
 function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)#::Dict{Integer, CompositeBuildings.AbstractBuilding}
     T = LightOSM.DEFAULT_OSM_ID_TYPE
-
     # parse all nodes into Node type
     nodes = Dict{T, Node{T}}()
     for node in osm_buildings_dict["node"]
@@ -42,78 +60,78 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)#::
 
     added_ways = Set{T}()  # keep track of the ways already added during relation parsing
     buildings = Dict{T, CompositeBuildings.AbstractBuilding{T}}()
-    building_parts = Dict{T, Union{SimplePart, MultiPolyPart}}()
+    building_parts = Dict{T, BuildingPart{T}}()
 
     for relation in osm_buildings_dict["relation"]
-        # parse all multipolygon buildings
+        # parse all buildings with multiple rings
         if haskey(relation, "tags") && LightOSM.is_building(relation["tags"])
             tags = relation["tags"]
             rel_id = relation["id"]
             members = relation["members"]
+            polygon = empty_poly()
             
-            polygons = Vector{LightOSM.Polygon{T}}()
-            for member in members
+            # to be a valid polygon, the outer has to be the first one added
+            for member in sort(members, by=x->x["role"] == "outer")
                 way_id = member["ref"]
                 way = ways[way_id]
-
                 # copy tags from way to tags from relation
                 haskey(way, "tags") && merge!(tags, way["tags"]) # could potentially overwrite some data
                 push!(added_ways, way_id)
 
-                is_outer = member["role"] == "outer" ? true : false
-                nds = [nodes[n] for n in way["nodes"]]
-                push!(polygons, LightOSM.Polygon(way_id, nds, is_outer))
+                add_way_to_poly!(polygon, way, nodes)
             end
+            apply_wsg_84!(polygon)
             
             height, levels = composite_height(tags)
             tags["height"] = height
             tags["levels"] = levels
-            sort!(polygons, by = x -> x.is_outer, rev=true) # sorting so outer polygon is always first
-            buildings[rel_id] = MultiPolyBuilding{T}(rel_id, polygons, tags)
+            buildings[rel_id] = SimpleBuilding{T}(rel_id, polygon, tags)
 
         # parse all multipolygon parts
         elseif haskey(relation, "tags") && is_building_part(relation["tags"])
             tags = relation["tags"]
             rel_id = relation["id"]
             members = relation["members"]
+            polygon = empty_poly()
 
-            polygons = Vector{LightOSM.Polygon{T}}()
-            for member in members
+            for member in sort(members, by=x->x["role"] == "outer")
                 way_id = member["ref"]
                 way = ways[way_id]
-
                 # copy tags from way to tags from relation
                 haskey(way, "tags") && merge!(tags, way["tags"]) # could potentially overwrite some data
                 push!(added_ways, way_id)
-                is_outer = member["role"] == "outer"
-                nds = [nodes[n] for n in way["nodes"]]
-                push!(polygons, LightOSM.Polygon(way_id, nds, is_outer))
+                
+                add_way_to_poly!(polygon, way, nodes)
             end
+            apply_wsg_84!(polygon)
 
             # TODO: guarantee that relevant tags are present (height, min_height, max_height)...
-            sort!(polygons, by = x -> x.is_outer, rev = true)
-            building_parts[rel_id] = MultiPolyPart{T}(rel_id, polygons, tags)
+            building_parts[rel_id] = BuildingPart{T}(rel_id, polygon, tags)
             # TODO: maybe refactor this whole thing into a function?
         end
     end
 
     for (way_id, way) in ways
-        is_outer = true
         if haskey(way, "tags") && LightOSM.is_building(way["tags"]) && !(way_id in added_ways)
             tags = way["tags"]
             height, levels = composite_height(tags)
             tags["height"] = height
             tags["levels"] = levels
-            nds = [nodes[n] for n in way["nodes"]]
-            polygon = LightOSM.Polygon(way_id, nds, is_outer)
+
+            polygon = empty_poly()
+            add_way_to_poly!(polygon, way, nodes)
+            apply_wsg_84!(polygon)
             buildings[way_id] = SimpleBuilding{T}(way_id, polygon, tags)
+
         elseif haskey(way, "tags") && is_building_part(way["tags"]) && !(way_id in added_ways)
             tags = way["tags"]
             # TODO: make sure all relevant tags are present
             # tags["height"] = composite_height(tags)
-            nds = [nodes[n] for n in way["nodes"]]
-            polygon = LightOSM.Polygon(way_id, nds, is_outer)
-            building_parts[way_id] = SimplePart{T}(way_id, polygon, tags)
+
+            polygon = empty_poly()
+            add_way_to_poly!(polygon, way, nodes)
+            apply_wsg_84!(polygon)
+            building_parts[way_id] = BuildingPart{T}(way_id, polygon, tags)
         end
     end
 

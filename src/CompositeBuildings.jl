@@ -5,12 +5,12 @@ using LightXML
 using JSON
 using HTTP
 using Formatting
+using ArchGDAL
 using GeoInterface
 
+
 export SimpleBuilding,
-    MultiPolyBuilding,
-    SimplePart,
-    MultiPolyPart,
+    BuildingPart,
     CompositeBuilding
 include("types.jl")
 
