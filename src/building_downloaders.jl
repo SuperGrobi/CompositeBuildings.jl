@@ -31,7 +31,6 @@ end
 function osm_composite_buildings_from_place_name(; place_name::String,
                                                 metadata::Bool=false,
                                                 download_format::Symbol=:osm)::String
-    # TODO: implement our own version of the polygon query
     query = overpass_composite_building_query(:place_name, place_name, metadata, download_format)
     return LightOSM.overpass_request(query)
 end
@@ -42,7 +41,6 @@ function osm_composite_buildings_from_bbox(; minlat::Float64,
                                            maxlon::Float64,
                                            metadata::Bool=false,
                                            download_format::Symbol=:osm)::String
-    # TODO: implement our own version of the query
     bbox = [minlat, minlon, maxlat, maxlon]
     query = overpass_composite_building_query(:bbox, bbox, metadata, download_format)
     return LightOSM.overpass_request(query)
@@ -52,7 +50,6 @@ function osm_composite_buildings_from_point(; point::GeoLocation,
                                             radius::Number,
                                             metadata::Bool=false,
                                             download_format::Symbol=:osm)::String
-    # TODO: think about how we can download a circular section from a point
     circle = (point, radius)
     query = overpass_composite_building_query(:point, circle, metadata, download_format)
     return LightOSM.overpass_request(query)
