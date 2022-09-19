@@ -1,6 +1,33 @@
+const BuildingDict = Dict{Integer, CompositeBuildings.AbstractBuilding}
+const PartDict = Dict{Integer, CompositeBuildings.BuildingPart}
 is_building_part(tags::Dict)::Bool = haskey(tags, "building:part")
 
-function composite_height(tags::Dict)::Tuple{Union{Number, Missing}, Union{Number, Missing}}
+function to_dataframe(d::Union{BuildingDict, PartDict}; preserve_all_tags=false)
+    # build list of values
+    all_tags = Dict{Symbol, Any}()
+    first_elem = first(d).second
+    all_tags[:id] = typeof(first_elem.id)[]
+    all_tags[:geometry] = typeof(first_elem.polygon)[]
+    all_tags[:height] = Union{Missing, Float64}[]
+    all_tags[:levels] = Union{Missing, Int8}[]
+    
+    # create DataFrames
+    df = DataFrame(all_tags...)
+    
+    # add all elements as rows
+    for (id, elem) in d
+        row = Dict{Symbol, Any}()
+        row[:id] = elem.id
+        row[:geometry] = elem.polygon
+        for (tag, value) in elem.tags
+            row[Symbol(tag)] = value
+        end
+        push!(df, row; cols= preserve_all_tags ? :union : :subset)
+    end
+    return df
+end
+
+function composite_height(tags::Dict)::Tuple{Union{Float64, Missing}, Union{Int8, Missing}}
     height = get(tags, "height", missing)
     levels = get(tags, "building:levels", missing) !== missing ? tags["building:levels"] : get(tags, "level", missing)
     roof_levels = get(tags, "roof:levels", missing)
@@ -11,17 +38,15 @@ function composite_height(tags::Dict)::Tuple{Union{Number, Missing}, Union{Numbe
         levels = levels isa String ? round(max([LightOSM.remove_non_numeric(l) for l in split(levels, r"[+^;,-]")]...)) : levels
         levels = levels == 0 ? missing : levels
         # set building height to missing if there is no data.
-        levels = missing  # rand(1:DEFAULT_MAX_BUILDING_LEVELS[])
     end
     if !(roof_levels isa Missing)
         roof_levels = roof_levels isa String ? round(max([LightOSM.remove_non_numeric(l) for l in split(roof_levels, r"[+^;,-]")]...)) : roof_levels
     end
 
     # ignore if there is no roof level, it is rarely used
-    return height, roof_levels isa Missing ? levels : levels + roof_levels
+    return height, roof_levels isa Missing ? levels : Int8(levels + roof_levels)
 end
 
-const BuildingDict = Dict{Integer, CompositeBuildings.AbstractBuilding}
 
 # it is, for some reason, impossible to define this as a constant...
 OSM_ref() = ArchGDAL.importEPSG(4326) # TODO: figure out the correct order.
@@ -43,7 +68,7 @@ function add_way_to_poly!(poly, way, nodes)
 end
 
 
-function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)#::Dict{Integer, CompositeBuildings.AbstractBuilding}
+function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::Tuple{BuildingDict, PartDict}
     T = LightOSM.DEFAULT_OSM_ID_TYPE
     # parse all nodes into Node type
     nodes = Dict{T, Node{T}}()
@@ -150,19 +175,19 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)#::
     return buildings, building_parts
 end
 
-function composite_buildings_from_object(composite_xml_object::XMLDocument)#::Dict{Integer, CompositeBuildings.AbstractBuilding{Integer}}
+function composite_buildings_from_object(composite_xml_object::XMLDocument)::Tuple{BuildingDict, PartDict}
     dict_to_parse = LightOSM.osm_dict_from_xml(composite_xml_object)
     return parse_osm_composite_buildings_dict(dict_to_parse)
 end
 
 
-function composite_buildings_from_object(composite_json_object::AbstractArray)::Dict{Integer, CompositeBuildings.AbstractBuilding{Integer}}
+function composite_buildings_from_object(composite_json_object::AbstractArray)::Tuple{BuildingDict, PartDict}
     dict_to_parse = LightOSM.osm_dict_from_json(composite_json_object)
     return parse_osm_composite_buildings_dict(dict_to_parse)
 end
 
 
-function composite_buildings_from_file(file_path::String)::Dict{Integer, CompositeBuildings.AbstractBuilding{Integer}}
+function composite_buildings_from_file(file_path::String)::Tuple{BuildingDict, PartDict}
     !isfile(file_path) && throw(ArgumentError("File $file_path does not exist"))
     deserializer = LightOSM.file_deserializer(file_path)
     obj = deserializer(file_path)
@@ -175,7 +200,7 @@ function composite_buildings_from_download(download_method::Symbol;
                                            download_format::Symbol=:osm,
                                            save_to_file_location::Union{String,Nothing}=nothing,
                                            download_kwargs...
-                                           )#::Dict{Integer, CompositeBuildings.AbstractBuilding{Integer}}
+                                           )::Tuple{BuildingDict, PartDict}
     obj = download_composite_osm_buildings(download_method;
                                            metadata=metadata,
                                            download_format=download_format,
