@@ -25,4 +25,7 @@ export composite_buildings_from_object,
     buildings_from_test_area,
     to_dataframe
 include("building_parsers.jl")
+
+export relate_buildings
+include("relate_buildings.jl")
 end
