@@ -9,6 +9,8 @@ using ArchGDAL
 using GeoInterface
 using GeoInterfaceRecipes
 using DataFrames
+using GeoDataFrames
+using GeoFormatTypes
 
 export SimpleBuilding,
     BuildingPart,
@@ -23,9 +25,14 @@ export composite_buildings_from_object,
     composite_buildings_from_file,
     composite_buildings_from_download,
     buildings_from_test_area,
+    dfs_from_test_area,
     to_dataframe
 include("building_parsers.jl")
 
 export relate_buildings
 include("relate_buildings.jl")
+
+export load_british_shapefiles,
+    bounding_box
+include("load_other_sources.jl")
 end

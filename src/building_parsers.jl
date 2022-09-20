@@ -209,4 +209,26 @@ function composite_buildings_from_download(download_method::Symbol;
     return composite_buildings_from_object(obj)
 end
 
+function osm_dfs_from_object(object)
+    b, p = composite_buildings_from_object(object)
+    b = to_dataframe(b)
+    p = to_dataframe(p; preserve_all_tags = true)
+    return b, p
+end
+
+function osm_dfs_from_file(path)
+    b, p = composite_buildings_from_file(path)
+    b = to_dataframe(b)
+    p = to_dataframe(p; preserve_all_tags = true)
+    return b, p
+end
+
+function osm_dfs_from_download(args...; kwargs...)
+    b, p = composite_buildings_from_download(args...; kwargs...)
+    b = to_dataframe(b)
+    p = to_dataframe(p; preserve_all_tags = true)
+    return b, p
+end
+
 buildings_from_test_area() = composite_buildings_from_download(:bbox; minlat=55.6830369, minlon=12.5905037, maxlat=55.687142, maxlon=12.596064)
+dfs_from_test_area() = osm_dfs_from_download(:bbox; minlat=55.6830369, minlon=12.5905037, maxlat=55.687142, maxlon=12.596064)
