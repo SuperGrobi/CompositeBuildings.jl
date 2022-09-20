@@ -49,7 +49,7 @@ end
 
 
 # it is, for some reason, impossible to define this as a constant...
-OSM_ref() = ArchGDAL.importEPSG(4326) # TODO: figure out the correct order.
+OSM_ref() = ArchGDAL.importEPSG(4326; order=:trad)
 empty_poly() = ArchGDAL.createpolygon()
 
 function apply_wsg_84!(geom)
