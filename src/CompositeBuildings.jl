@@ -24,9 +24,12 @@ include("building_downloaders.jl")
 export composite_buildings_from_object,
     composite_buildings_from_file,
     composite_buildings_from_download,
+    to_dataframe,
+    osm_dfs_from_object,
+    osm_dfs_from_file,
+    osm_dfs_from_download,
     buildings_from_test_area,
-    dfs_from_test_area,
-    to_dataframe
+    dfs_from_test_area
 include("building_parsers.jl")
 
 export relate_buildings
