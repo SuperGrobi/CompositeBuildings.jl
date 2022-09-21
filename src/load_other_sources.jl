@@ -1,7 +1,8 @@
-function load_british_shapefiles(path)
+function load_british_shapefiles(path; bbox=nothing)
     df = GeoDataFrames.read(path)
 
     name_map = Dict(
+        :OBJECTID => :id,
         :MEAN_mean => :height_mean,
         :MIN_min => :height_min,
         :MAX_max => :height_max
@@ -18,7 +19,16 @@ function load_british_shapefiles(path)
             ArchGDAL.transform!(geo, trans)
         end
     end
-    return df
+    if bbox === nothing
+        return df
+    else
+        # clip dataframe
+        bbox = createpolygon([(bbox.minlon, bbox.minlat), (bbox.minlon, bbox.maxlat), (bbox.maxlon, bbox.maxlat), (bbox.maxlon, bbox.minlat), (bbox.minlon, bbox.minlat)])
+        apply_wsg_84!(bbox)
+        df = filter(:geometry => x -> intersects(x, bbox), df)
+        return df
+
+    end
 end
 
 function bounding_box(geo_colunm)
@@ -29,14 +39,15 @@ function bounding_box(geo_colunm)
     max_lon = -Inf
     for box in boxes
         for point in GeoInterface.getpoint(box)
-            lat = getcoord(point, 1)
-            lon = getcoord(point, 2)
+            lat = getcoord(point, 2)
+            lon = getcoord(point, 1)
             min_lat > lat && (min_lat = lat)
             max_lat < lat && (max_lat = lat)
             min_lon > lon && (min_lon = lon)
             max_lon < lon && (max_lon = lon)
         end
     end
-    box = createpolygon([(min_lat, min_lon), (min_lat, max_lon), (max_lat, max_lon), (max_lat, min_lon), (min_lat, min_lon)])
+    box = createpolygon([(min_lon, min_lat), (min_lon, max_lat), (max_lon, max_lat), (max_lon, min_lat), (min_lon, min_lat)])
+    apply_wsg_84!(box)
     return box
 end
