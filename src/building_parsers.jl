@@ -110,7 +110,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::T
             height, levels = composite_height(tags)
             tags["height"] = height
             tags["levels"] = levels
-            @assert ArchGDAL.isvalid(polygon) "polygon of relation building $rel_id is not valid!"
+            !ArchGDAL.isvalid(polygon) && @warn "polygon of relation building $rel_id is not valid!"
             buildings[rel_id] = SimpleBuilding{T}(rel_id, polygon, tags)
 
         # parse all multipolygon parts
@@ -132,7 +132,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::T
             apply_wsg_84!(polygon)
 
             # TODO: guarantee that relevant tags are present (height, min_height, max_height)...
-            @assert ArchGDAL.isvalid(polygon) "polygon of relation part $rel_id is not valid!"
+            !ArchGDAL.isvalid(polygon) &&  @warn "polygon of relation part $rel_id is not valid!"
             building_parts[rel_id] = BuildingPart{T}(rel_id, polygon, tags)
             # TODO: maybe refactor this whole thing into a function?
         end
@@ -148,7 +148,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::T
             polygon = empty_poly()
             add_way_to_poly!(polygon, way, nodes)
             apply_wsg_84!(polygon)
-            @assert ArchGDAL.isvalid(polygon) "polygon of building $way_id is not valid!"
+            !ArchGDAL.isvalid(polygon) &&  @warn "polygon of building $way_id is not valid!"
             buildings[way_id] = SimpleBuilding{T}(way_id, polygon, tags)
 
         elseif haskey(way, "tags") && is_building_part(way["tags"]) && !(way_id in added_ways)
@@ -159,7 +159,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::T
             polygon = empty_poly()
             add_way_to_poly!(polygon, way, nodes)
             apply_wsg_84!(polygon)
-            @assert ArchGDAL.isvalid(polygon) "polygon of part $way_id is not valid!"
+            !ArchGDAL.isvalid(polygon) &&  @warn "polygon of part $way_id is not valid!"
             building_parts[way_id] = BuildingPart{T}(way_id, polygon, tags)
         end
     end
