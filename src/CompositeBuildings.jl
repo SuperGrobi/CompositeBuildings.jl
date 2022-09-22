@@ -11,7 +11,10 @@ using GeoInterfaceRecipes
 using DataFrames
 using GeoDataFrames
 using GeoFormatTypes
+using ProgressMeter
+using Plots
 
+println("test")
 export SimpleBuilding,
     BuildingPart,
     CompositeBuilding
