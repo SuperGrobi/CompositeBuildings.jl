@@ -27,7 +27,7 @@ function to_dataframe(d::Union{BuildingDict, PartDict}; preserve_all_tags=false)
     return df
 end
 
-function composite_height(tags::Dict)::Tuple{Union{Float64, Missing}, Union{Int8, Missing}}
+function composite_height(tags::Dict)::Tuple{Union{Float64, Missing}, Union{Float64, Missing}}
     height = get(tags, "height", missing)
     levels = get(tags, "building:levels", missing) !== missing ? tags["building:levels"] : get(tags, "level", missing)
     roof_levels = get(tags, "roof:levels", missing)
@@ -36,15 +36,16 @@ function composite_height(tags::Dict)::Tuple{Union{Float64, Missing}, Union{Int8
     end
     if !(levels isa Missing)
         levels = levels isa String ? round(max([LightOSM.remove_non_numeric(l) for l in split(levels, r"[+^;,-]")]...)) : levels
-        levels = levels == 0 ? missing : levels
+        levels = levels < 1 ? missing : levels
         # set building height to missing if there is no data.
     end
     if !(roof_levels isa Missing)
         roof_levels = roof_levels isa String ? round(max([LightOSM.remove_non_numeric(l) for l in split(roof_levels, r"[+^;,-]")]...)) : roof_levels
     end
 
+
     # ignore if there is no roof level, it is rarely used
-    return height, roof_levels isa Missing ? levels : Int8(levels + roof_levels)
+    return height, roof_levels isa Missing ? levels : levels + roof_levels
 end
 
 
@@ -68,7 +69,11 @@ function add_way_to_poly!(poly, way, nodes)
 end
 
 
-function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::Tuple{BuildingDict, PartDict}
+function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict; return_invalid = false)::Tuple{BuildingDict, PartDict}
+    iv_relation_building = 0
+    iv_relation_part = 0
+    iv_simple_building = 0
+    iv_simple_part = 0
     T = LightOSM.DEFAULT_OSM_ID_TYPE
     # parse all nodes into Node type
     nodes = Dict{T, Node{T}}()
@@ -112,7 +117,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::T
             height, levels = composite_height(tags)
             tags["height"] = height
             tags["levels"] = levels
-            !ArchGDAL.isvalid(polygon) && @warn "polygon of relation building $rel_id is not valid!"
+            !ArchGDAL.isvalid(polygon) && (iv_relation_building += 1)
             buildings[rel_id] = SimpleBuilding{T}(rel_id, polygon, tags)
 
         # parse all multipolygon parts
@@ -135,7 +140,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::T
             apply_wsg_84!(polygon)
 
             # TODO: guarantee that relevant tags are present (height, min_height, max_height)...
-            !ArchGDAL.isvalid(polygon) &&  @warn "polygon of relation part $rel_id is not valid!"
+            !ArchGDAL.isvalid(polygon) &&  (iv_relation_part += 1)
             building_parts[rel_id] = BuildingPart{T}(rel_id, polygon, tags)
             # TODO: maybe refactor this whole thing into a function?
         end
@@ -151,7 +156,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::T
             polygon = empty_poly()
             add_way_to_poly!(polygon, way, nodes)
             apply_wsg_84!(polygon)
-            !ArchGDAL.isvalid(polygon) &&  @warn "polygon of building $way_id is not valid!"
+            !ArchGDAL.isvalid(polygon) &&  (iv_simple_building += 1)
             buildings[way_id] = SimpleBuilding{T}(way_id, polygon, tags)
 
         elseif haskey(way, "tags") && is_building_part(way["tags"]) && !(way_id in added_ways)
@@ -162,39 +167,44 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::T
             polygon = empty_poly()
             add_way_to_poly!(polygon, way, nodes)
             apply_wsg_84!(polygon)
-            !ArchGDAL.isvalid(polygon) &&  @warn "polygon of part $way_id is not valid!"
+            !ArchGDAL.isvalid(polygon) &&  (iv_simple_part += 1)
             building_parts[way_id] = BuildingPart{T}(way_id, polygon, tags)
         end
     end
 
-
-    println("number of ways: ", length(ways))
-    println("number of added ways: ", length(added_ways))
-    println("numer of complex buildings: ", length(buildings))
-    println("number of building parts: ", length(building_parts))
+    @warn "$iv_relation_building relation buildings are not valid!"
+    @warn "$iv_relation_part relation parts are not valid!"
+    @warn "$iv_simple_building simple buildings are not valid!"
+    @warn "$iv_simple_part simple parts are not valid!"
+    if return_invalid
+        @info "invalid objects WILL be returned."
+        return buildings, building_parts
+    else
+        @info "invalid objects will NOT be returned."
+        return filter(x->ArchGDAL.isvalid(x.second.polygon), buildings), filter(x->ArchGDAL.isvalid(x.second.polygon), building_parts)
+    end
     # we have now parse all building outlines to buildings and all building Parts
     # now we have to associate building parts with the corresponding buildings
     # we do this by
-    return buildings, building_parts
 end
 
-function composite_buildings_from_object(composite_xml_object::XMLDocument)::Tuple{BuildingDict, PartDict}
+function composite_buildings_from_object(composite_xml_object::XMLDocument; return_invalid=false)::Tuple{BuildingDict, PartDict}
     dict_to_parse = LightOSM.osm_dict_from_xml(composite_xml_object)
-    return parse_osm_composite_buildings_dict(dict_to_parse)
+    return parse_osm_composite_buildings_dict(dict_to_parse; return_invalid=return_invalid)
 end
 
 
-function composite_buildings_from_object(composite_json_object::AbstractArray)::Tuple{BuildingDict, PartDict}
+function composite_buildings_from_object(composite_json_object::AbstractArray; return_invalid=false)::Tuple{BuildingDict, PartDict}
     dict_to_parse = LightOSM.osm_dict_from_json(composite_json_object)
-    return parse_osm_composite_buildings_dict(dict_to_parse)
+    return parse_osm_composite_buildings_dict(dict_to_parse; return_invalid=return_invalid)
 end
 
 
-function composite_buildings_from_file(file_path::String)::Tuple{BuildingDict, PartDict}
+function composite_buildings_from_file(file_path::String; return_invalid=false)::Tuple{BuildingDict, PartDict}
     !isfile(file_path) && throw(ArgumentError("File $file_path does not exist"))
     deserializer = LightOSM.file_deserializer(file_path)
     obj = deserializer(file_path)
-    return composite_buildings_from_object(obj)
+    return composite_buildings_from_object(obj; return_invalid=return_invalid)
 end
 
 
@@ -202,6 +212,7 @@ function composite_buildings_from_download(download_method::Symbol;
                                            metadata::Bool=false,
                                            download_format::Symbol=:osm,
                                            save_to_file_location::Union{String,Nothing}=nothing,
+                                           return_invalid=false,
                                            download_kwargs...
                                            )::Tuple{BuildingDict, PartDict}
     obj = download_composite_osm_buildings(download_method;
@@ -209,25 +220,25 @@ function composite_buildings_from_download(download_method::Symbol;
                                            download_format=download_format,
                                            save_to_file_location=save_to_file_location,
                                            download_kwargs...)
-    return composite_buildings_from_object(obj)
+    return composite_buildings_from_object(obj; return_invalid=false)
 end
 
-function osm_dfs_from_object(object)
-    b, p = composite_buildings_from_object(object)
+function osm_dfs_from_object(object; return_invalid=false)
+    b, p = composite_buildings_from_object(object; return_invalid=false)
     b = to_dataframe(b)
     p = to_dataframe(p; preserve_all_tags = true)
     return b, p
 end
 
-function osm_dfs_from_file(path)
-    b, p = composite_buildings_from_file(path)
+function osm_dfs_from_file(path; return_invalid=false)
+    b, p = composite_buildings_from_file(path; return_invalid=false)
     b = to_dataframe(b)
     p = to_dataframe(p; preserve_all_tags = true)
     return b, p
 end
 
-function osm_dfs_from_download(args...; kwargs...)
-    b, p = composite_buildings_from_download(args...; kwargs...)
+function osm_dfs_from_download(args...; return_invalid=false, kwargs...)
+    b, p = composite_buildings_from_download(args...; return_invalid=false, kwargs...)
     b = to_dataframe(b)
     p = to_dataframe(p; preserve_all_tags = true)
     return b, p
