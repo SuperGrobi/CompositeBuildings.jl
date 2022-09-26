@@ -49,5 +49,5 @@ function bounding_box(geo_colunm)
     end
     box = createpolygon([(min_lon, min_lat), (min_lon, max_lat), (max_lon, max_lat), (max_lon, min_lat), (min_lon, min_lat)])
     apply_wsg_84!(box)
-    return box
+    return (minlat=min_lat, minlon=min_lon, maxlat=max_lat, maxlon=max_lon), box
 end
