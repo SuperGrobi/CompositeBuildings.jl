@@ -87,12 +87,14 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::T
     buildings = Dict{T, CompositeBuildings.AbstractBuilding{T}}()
     building_parts = Dict{T, BuildingPart{T}}()
 
-    for relation in osm_buildings_dict["relation"]
+    @showprogress 0.1 "parsing relations" for relation in osm_buildings_dict["relation"]
         # parse all buildings with multiple rings
         if haskey(relation, "tags") && LightOSM.is_building(relation["tags"])
             tags = relation["tags"]
             rel_id = relation["id"]
-            members = relation["members"]
+            # throw out all the weird stuff that may be attached to relations
+            members = filter(x->x["type"] == "way" && x["role"] in ["outer", "inner"], relation["members"])
+            length(members) == 0 && continue
             polygon = empty_poly()
             
             # to be a valid polygon, the outer has to be the first one added
@@ -117,7 +119,8 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::T
         elseif haskey(relation, "tags") && is_building_part(relation["tags"])
             tags = relation["tags"]
             rel_id = relation["id"]
-            members = relation["members"]
+            members = filter(x->x["type"] == "way" && x["role"] in ["outer", "inner"], relation["members"])
+            length(members) == 0 && continue
             polygon = empty_poly()
 
             for member in sort(members, by=x->x["role"] == "outer", rev=true)
@@ -138,7 +141,7 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict)::T
         end
     end
 
-    for (way_id, way) in ways
+    @showprogress 0.1 "parsing ways" for (way_id, way) in ways
         if haskey(way, "tags") && LightOSM.is_building(way["tags"]) && !(way_id in added_ways)
             tags = way["tags"]
             height, levels = composite_height(tags)
