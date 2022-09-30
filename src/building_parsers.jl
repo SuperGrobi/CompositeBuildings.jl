@@ -172,15 +172,16 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict; re
         end
     end
 
-    @warn "$iv_relation_building relation buildings are not valid!"
-    @warn "$iv_relation_part relation parts are not valid!"
-    @warn "$iv_simple_building simple buildings are not valid!"
-    @warn "$iv_simple_part simple parts are not valid!"
+    iv_relation_building != 0 && @warn "$iv_relation_building relation buildings are not valid!"
+    iv_relation_part != 0 && @warn "$iv_relation_part relation parts are not valid!"
+    iv_simple_building != 0 && @warn "$iv_simple_building simple buildings are not valid!"
+    iv_simple_part != 0 && @warn "$iv_simple_part simple parts are not valid!"
+    total_iv = iv_relation_building + iv_relation_part + iv_simple_building + iv_simple_part
     if return_invalid
-        @info "invalid objects WILL be returned."
+        total_iv > 0 && @info "invalid objects WILL be returned."
         return buildings, building_parts
     else
-        @info "invalid objects will NOT be returned."
+        total_iv > 0 && @info "invalid objects will NOT be returned."
         return filter(x->ArchGDAL.isvalid(x.second.polygon), buildings), filter(x->ArchGDAL.isvalid(x.second.polygon), building_parts)
     end
     # we have now parse all building outlines to buildings and all building Parts
