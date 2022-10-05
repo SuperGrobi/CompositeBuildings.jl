@@ -225,21 +225,21 @@ function composite_buildings_from_download(download_method::Symbol;
 end
 
 function osm_dfs_from_object(object; return_invalid=false)
-    b, p = composite_buildings_from_object(object; return_invalid=false)
+    b, p = composite_buildings_from_object(object; return_invalid=return_invalid)
     b = to_dataframe(b)
     p = to_dataframe(p; preserve_all_tags = true)
     return b, p
 end
 
 function osm_dfs_from_file(path; return_invalid=false)
-    b, p = composite_buildings_from_file(path; return_invalid=false)
+    b, p = composite_buildings_from_file(path; return_invalid=return_invalid)
     b = to_dataframe(b)
     p = to_dataframe(p; preserve_all_tags = true)
     return b, p
 end
 
 function osm_dfs_from_download(args...; return_invalid=false, kwargs...)
-    b, p = composite_buildings_from_download(args...; return_invalid=false, kwargs...)
+    b, p = composite_buildings_from_download(args...; return_invalid=return_invalid, kwargs...)
     b = to_dataframe(b)
     p = to_dataframe(p; preserve_all_tags = true)
     return b, p
