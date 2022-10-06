@@ -28,7 +28,7 @@ the `DataFrames` returned by the loader functions have two metadata tags attache
 - :center_lon
 - :center_lat
 
-which hold the approximate center of the data in the dataframe, in WSG84 lon and lat respectively.
+which hold the approximate center of the data in the dataframe, in WSG84 lon and lat respectively. (I say approximately, since I reuse these coordinates whenever possible. For example during shadow casting.)
 
 ## Disclaimer
 I have no idea what I am doing. Stuff WILL break. Use with care. You have been warned.
