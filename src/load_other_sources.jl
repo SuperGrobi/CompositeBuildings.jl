@@ -23,9 +23,9 @@ function load_british_shapefiles(path; bbox=nothing)
         bbox, _ = bounding_box(df.geometry)
     else
         # clip dataframe
-        bbox = createpolygon([(bbox.minlon, bbox.minlat), (bbox.minlon, bbox.maxlat), (bbox.maxlon, bbox.maxlat), (bbox.maxlon, bbox.minlat), (bbox.minlon, bbox.minlat)])
-        apply_wsg_84!(bbox)
-        df = filter(:geometry => x -> intersects(x, bbox), df)
+        bbox_arch = createpolygon([(bbox.minlon, bbox.minlat), (bbox.minlon, bbox.maxlat), (bbox.maxlon, bbox.maxlat), (bbox.maxlon, bbox.minlat), (bbox.minlon, bbox.minlat)])
+        apply_wsg_84!(bbox_arch)
+        df = filter(:geometry => x -> intersects(x, bbox_arch), df)
     end
     metadata!(df, :center_lon, (bbox.minlon + bbox.maxlon)/2; style=:note)
     metadata!(df, :center_lat, (bbox.minlat + bbox.maxlat)/2; style=:note)
