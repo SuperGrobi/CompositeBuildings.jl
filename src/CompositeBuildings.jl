@@ -24,6 +24,9 @@ function apply_wsg_84!(geom)
     end
 end
 
+export bounding_box
+include("utils.jl")
+
 export SimpleBuilding,
     BuildingPart,
     CompositeBuilding
@@ -47,7 +50,7 @@ include("building_parsers.jl")
 export relate_buildings
 include("relate_buildings.jl")
 
-export load_british_shapefiles,
-    bounding_box
+export load_british_shapefiles
 include("load_other_sources.jl")
+
 end

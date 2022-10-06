@@ -22,5 +22,13 @@ All ArchGDAL polygons have the WSG84 coordinate System applied.
 
 this package also provides the `relate_buildings` function, used find related building in two `DataFrame`s. (Introducing the first arbitrary parameter)
 
+## Metadata
+the `DataFrames` returned by the loader functions have two metadata tags attached:
 
-Disclaimer: I have no idea what I am doing. Stuff WILL break. Use with care. You have been warned.
+- :center_lon
+- :center_lat
+
+which hold the approximate center of the data in the dataframe, in WSG84 lon and lat respectively.
+
+## Disclaimer
+I have no idea what I am doing. Stuff WILL break. Use with care. You have been warned.
