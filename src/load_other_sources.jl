@@ -27,7 +27,7 @@ function load_british_shapefiles(path; bbox=nothing)
         apply_wsg_84!(bbox_arch)
         df = filter(:geometry => x -> intersects(x, bbox_arch), df)
     end
-    metadata!(df, :center_lon, (bbox.minlon + bbox.maxlon)/2; style=:note)
-    metadata!(df, :center_lat, (bbox.minlat + bbox.maxlat)/2; style=:note)
+    metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon)/2; style=:note)
+    metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat)/2; style=:note)
     return df
 end

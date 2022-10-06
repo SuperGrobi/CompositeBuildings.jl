@@ -26,8 +26,8 @@ function to_dataframe(d::Union{BuildingDict, PartDict}; preserve_all_tags=false)
     end
 
     bbox, _ = bounding_box(df.geometry)
-    metadata!(df, :center_lon, (bbox.minlon + bbox.maxlon)/2; style=:note)
-    metadata!(df, :center_lat, (bbox.minlat + bbox.maxlat)/2; style=:note)
+    metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon)/2; style=:note)
+    metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat)/2; style=:note)
     return df
 end
 
