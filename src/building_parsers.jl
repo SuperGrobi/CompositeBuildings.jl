@@ -49,15 +49,8 @@ function composite_height(tags::Dict)::Tuple{Union{Float64, Missing}, Union{Floa
 end
 
 
-# it is, for some reason, impossible to define this as a constant...
-OSM_ref() = ArchGDAL.importEPSG(4326; order=:trad)
 empty_poly() = ArchGDAL.createpolygon()
 
-function apply_wsg_84!(geom)
-    ArchGDAL.createcoordtrans(OSM_ref(), OSM_ref()) do trans
-        ArchGDAL.transform!(geom, trans)
-    end
-end
 
 function add_way_to_poly!(poly, way, nodes)
     nds = [nodes[n] for n in way["nodes"]]
