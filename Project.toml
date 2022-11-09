@@ -19,6 +19,7 @@ ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 
 [compat]
 Formatting = "0.4"
+GeoDataFrames = "0.3"
 HTTP = "1"
 JSON = "0.21"
 LightOSM = "0.2"
