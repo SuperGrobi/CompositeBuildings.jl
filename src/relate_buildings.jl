@@ -12,8 +12,9 @@ function relate_buildings(df1, df2, id1= :id_1, id2= :id_2; overlap=0.7)
     df = DataFrame(cols...)
     # This could probably be way faster, if we sort our rows in some sort of binary spatial partition tree...
     # this will probably also help later, for figuring out if some point is in the shadow of a building or not.
-    for r1 in eachrow(df1)
+    @showprogress 1 "building relation table" for r1 in eachrow(df1)
         for r2 in eachrow(df2)
+            GeoInterface.disjoint(r1.geometry, r2.geometry) && continue  # 4 times speedup...
             area_intersection = GeoInterface.area(GeoInterface.intersection(r1.geometry, r2.geometry))
             area_minimum = min(GeoInterface.area(r1.geometry), GeoInterface.area(r2.geometry))
             if area_intersection >= area_minimum * overlap

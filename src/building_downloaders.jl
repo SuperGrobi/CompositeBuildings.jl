@@ -3,8 +3,10 @@ function overpass_composite_building_query(download_method::Symbol, # this feels
                                            metadata::Bool=false, 
                                            download_format::Symbol=:osm)::String
 
-    filters1 = """node["building"]({1});<;way["building"]({1});>;rel["building"]({1});>;"""
-    filters2 = """node["building:part"]({1});<;way["building:part"]({1});>;rel["building:part"]({1});>;"""
+    # WARNING: I removed the query for nodes with a building tag. node["building"]({1});<;
+    filters1 = """way["building"]({1});>;rel["building"]({1});>;"""
+    # WARNING: I removed the query for nodes with a building: part tag. node["building:part"]({1});<;
+    filters2 = """way["building:part"]({1});>;rel["building:part"]({1});>;"""
     filters = "($filters1);($filters2);"
     full_filter_string = ""
     if download_method == :place_name
