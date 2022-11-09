@@ -1,5 +1,5 @@
 /Manifest.toml
-
+/Nottingham/*
 
 # OS generated files #
 ######################
@@ -9,3 +9,4 @@
 .Trashes
 ehthumbs.db
 Thunbs.db
+arghgdal.jl
