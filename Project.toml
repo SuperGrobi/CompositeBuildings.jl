@@ -20,6 +20,7 @@ ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 [compat]
 ArchGDAL = "0.9"
 Formatting = "0.4"
+GeoInterfaceRecipes = "1"
 GeoInterface = "1"
 GeoFormatTypes = "0.4"
 GeoDataFrames = "0.3"
