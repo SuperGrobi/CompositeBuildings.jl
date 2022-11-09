@@ -1,7 +1,8 @@
-function load_british_shapefiles(path)
+function load_british_shapefiles(path; bbox=nothing)
     df = GeoDataFrames.read(path)
 
     name_map = Dict(
+        :OBJECTID => :id,
         :MEAN_mean => :height_mean,
         :MIN_min => :height_min,
         :MAX_max => :height_max
@@ -18,25 +19,31 @@ function load_british_shapefiles(path)
             ArchGDAL.transform!(geo, trans)
         end
     end
-    return df
-end
+    if bbox === nothing
+        bbox, _ = bounding_box(df.geometry)
+    else
+        # clip dataframe
+        bbox_arch = createpolygon([(bbox.minlon, bbox.minlat), (bbox.minlon, bbox.maxlat), (bbox.maxlon, bbox.maxlat), (bbox.maxlon, bbox.minlat), (bbox.minlon, bbox.minlat)])
+        apply_wsg_84!(bbox_arch)
+        df = filter(:geometry => x -> intersects(x, bbox_arch), df)
+    end
 
-function bounding_box(geo_colunm)
-    boxes = ArchGDAL.boundingbox.(geo_colunm)
-    min_lat = Inf
-    min_lon = Inf
-    max_lat = -Inf
-    max_lon = -Inf
-    for box in boxes
-        for point in GeoInterface.getpoint(box)
-            lat = getcoord(point, 1)
-            lon = getcoord(point, 2)
-            min_lat > lat && (min_lat = lat)
-            max_lat < lat && (max_lat = lat)
-            min_lon > lon && (min_lon = lon)
-            max_lon < lon && (max_lon = lon)
+    poly_df = filter(:geometry=>x->x isa ArchGDAL.IGeometry{ArchGDAL.wkbPolygon}, df)
+    index = maximum(df.id) + 1
+    multipoly_df = filter(:geometry=>x->x isa ArchGDAL.IGeometry{ArchGDAL.wkbMultiPolygon}, df)
+    polysplit_df = DataFrame()
+    for row in eachrow(multipoly_df)
+        for polygon in getgeom(row.geometry)
+            row.geometry = polygon
+            row.id = index
+            push!(polysplit_df, row)
+            index += 1
         end
     end
-    box = createpolygon([(min_lat, min_lon), (min_lat, max_lon), (max_lat, max_lon), (max_lat, min_lon), (min_lat, min_lon)])
-    return box
+
+    df = append!(poly_df, polysplit_df)
+
+    metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon)/2; style=:note)
+    metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat)/2; style=:note)
+    return df
 end
