@@ -18,11 +18,18 @@ LightXML = "9c8b4983-aa76-5018-a973-4c85ecc9e179"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 
 [compat]
+DataFrames = "1.4"
+ArchGDAL = "0.9"
 Formatting = "0.4"
+GeoInterfaceRecipes = "1"
+GeoInterface = "1"
+GeoFormatTypes = "0.4"
+GeoDataFrames = "0.3"
 HTTP = "1"
 JSON = "0.21"
 LightOSM = "0.2"
 LightXML = "0.9"
+ProgressMeter = "1"
 julia = "1.8"
 
 [extras]
