@@ -14,9 +14,6 @@ using GeoDataFrames
 using GeoFormatTypes
 using ProgressMeter
 
-export bounding_box
-include("utils.jl")
-
 export SimpleBuilding,
     BuildingPart,
     CompositeBuilding

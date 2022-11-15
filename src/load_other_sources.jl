@@ -20,7 +20,7 @@ function load_british_shapefiles(path; bbox=nothing)
         end
     end
     if bbox === nothing
-        bbox, _ = bounding_box(df.geometry)
+        bbox = BoundingBox(df.geometry)
     else
         # clip dataframe
         bbox_arch = createpolygon([(bbox.minlon, bbox.minlat), (bbox.minlon, bbox.maxlat), (bbox.maxlon, bbox.maxlat), (bbox.maxlon, bbox.minlat), (bbox.minlon, bbox.minlat)])

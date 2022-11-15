@@ -23,7 +23,7 @@ function to_dataframe(d::Union{BuildingDict, PartDict}; preserve_all_tags=false)
         push!(df, row; cols= preserve_all_tags ? :union : :subset)
     end
 
-    bbox, _ = bounding_box(df.geometry)
+    bbox = BoundingBox(df.geometry)
     metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon)/2; style=:note)
     metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat)/2; style=:note)
     return df
