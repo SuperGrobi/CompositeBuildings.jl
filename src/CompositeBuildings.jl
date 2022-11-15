@@ -1,5 +1,6 @@
 module CompositeBuildings
 
+using CoolWalksUtils
 using LightOSM
 using LightXML
 using JSON
@@ -12,17 +13,6 @@ using DataFrames
 using GeoDataFrames
 using GeoFormatTypes
 using ProgressMeter
-
-const OSM_ref = Ref{ArchGDAL.ISpatialRef}()
-function __init__()
-    OSM_ref[] = ArchGDAL.importEPSG(4326; order=:trad)
-end
-
-function apply_wsg_84!(geom)
-    ArchGDAL.createcoordtrans(OSM_ref[], OSM_ref[]) do trans
-        ArchGDAL.transform!(geom, trans)
-    end
-end
 
 export bounding_box
 include("utils.jl")

@@ -1,5 +1,3 @@
-const BuildingDict = Dict{Integer, CompositeBuildings.AbstractBuilding}
-const PartDict = Dict{Integer, CompositeBuildings.BuildingPart}
 is_building_part(tags::Dict)::Bool = haskey(tags, "building:part")
 
 function to_dataframe(d::Union{BuildingDict, PartDict}; preserve_all_tags=false)
@@ -181,9 +179,6 @@ function parse_osm_composite_buildings_dict(osm_buildings_dict::AbstractDict; re
         total_iv > 0 && @info "invalid objects will NOT be returned."
         return filter(x->ArchGDAL.isvalid(x.second.polygon), buildings), filter(x->ArchGDAL.isvalid(x.second.polygon), building_parts)
     end
-    # we have now parse all building outlines to buildings and all building Parts
-    # now we have to associate building parts with the corresponding buildings
-    # we do this by
 end
 
 function composite_buildings_from_object(composite_xml_object::XMLDocument; return_invalid=false)::Tuple{BuildingDict, PartDict}

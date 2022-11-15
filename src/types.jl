@@ -31,7 +31,8 @@ struct CompositeBuilding{T} <: AbstractBuilding{T}
     tags::AbstractDict{String,Any}
 end
 
-
+const BuildingDict = Dict{Integer, CompositeBuildings.AbstractBuilding}
+const PartDict = Dict{Integer, CompositeBuildings.BuildingPart}
 
 height(building::AbstractBuilding)::Union{Missing, Number} = building.tags["height"]
 levels(building::AbstractBuilding)::Union{Missing, Number} = building.tags["levels"]
