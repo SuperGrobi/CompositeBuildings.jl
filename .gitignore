@@ -10,6 +10,7 @@ Thunbs.db
 # other stuff #
 ###############
 /Manifest.toml
+/docs/build/
 /Nottingham/*
 
 arghgdal.jl
