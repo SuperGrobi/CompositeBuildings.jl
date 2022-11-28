@@ -1,6 +1,12 @@
 """
-constructs a dataframe which contains two id columns, describing the relation between two dataframes.
+
+    relate_buildings(df1, df2, id1= :id_1, id2= :id_2; overlap=0.7)
+
+constructs a dataframe with two id columns, relating geometries from `df1` and `df2` which overlap at least `overlap`.
 Both dataframes are expected to have at least an :id and an :geometry column.
+
+By setting `id1` and `id2`, you can decide the names of the resulting columns for the two dataframes, respectively.
+
 Two geometries g1, g2 are related, if:
 area(intersection(g1, g2)) >= min(area(g1), area(g2)) * overlap
 """
