@@ -1,3 +1,22 @@
+"""
+Sometimes, due to numerical errors, the resulting shadows are no longer of `polygon` type, but might contain
+some (usually very short) lines or points. This function removes these artefacts and returns only the `polygon`
+contained in the `shadow`.
+
+    shadow_cleanup(shadow)
+
+entry function for cleanup. dispatches on `geomtrait` of `shadow.`
+
+    shadow_cleanup(::PolygonTrait, shadow)
+
+returns `shadow` as it is.
+
+    shadow_cleanup(::GeometryCollectionTrait, shadow)
+
+returns the `polygon` in the `shadow`. If there is more than on polygon, or if there is at least one `multi polygon`
+it throws an `ArgumentError`.
+returns 
+"""
 shadow_cleanup(shadow) = shadow_cleanup(geomtrait(shadow), shadow)
 shadow_cleanup(::PolygonTrait, shadow) = shadow
 function shadow_cleanup(::GeometryCollectionTrait, shadow)
@@ -10,6 +29,19 @@ function shadow_cleanup(::GeometryCollectionTrait, shadow)
     end
 end
 
+"""
+    cast_shadow(buildings_df, height_key, sun_direction::AbstractArray)
+
+creates new `DataFrame` with the shadows of the buildings in `buildings_df` with the height given in the column with `height_key`.
+
+# arguments
+- `buildings_df`: DataFrame with metadata of `center_lat` and `center_lon` and at least these columns:
+    - `geometry`: `ArchGDAL` polygon in wsg84 crs (use `apply_wsg_84!` from `CoolWalksUtils.jl`)
+    - `id`: unique id for each building.
+    - height_key: column with name given in parameter `height_key`, containing the heights of the buildings.
+- `height_key`: name of column containing the height of the buildings
+- `sun_direction`: direction of sun
+"""
 function cast_shadow(buildings_df, height_key, sun_direction::AbstractArray)
     @assert sun_direction[3] > 0 "the sun is below or on the horizon. Everything is in shadow."
     #@info "this function assumes you geometry beeing in a suitable crs to do projections"

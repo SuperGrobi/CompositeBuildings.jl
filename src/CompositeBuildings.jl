@@ -12,7 +12,7 @@ export relate_buildings
 include("relate_buildings.jl")
 
 export load_british_shapefiles
-include("load_other_sources.jl")
+include("OtherLoaders.jl")
 
 export cast_shadow
 include("ShadowCasting.jl")

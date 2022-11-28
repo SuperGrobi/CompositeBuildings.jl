@@ -8,4 +8,5 @@ Documentation for [CompositeBuildings](https://github.com/SuperGrobi/CompositeBu
 
 ```@autodocs
 Modules = [CompositeBuildings]
+Pages = ["relate_buildings.jl"]
 ```

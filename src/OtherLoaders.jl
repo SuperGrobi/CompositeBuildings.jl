@@ -1,3 +1,14 @@
+"""
+    load_british_shapefiles(path; bbox=nothing)
+
+loads the shapefiles of the largest cities in great britain, provided by [emu analytics](https://www.emu-analytics.com/products/datapacks)
+into dataframes, possibly clipping along a named tuple `BoundingBox` with names `(minlon, minlat, maxlon, maxlat`.
+
+Returns a dataframe with the columns given in the shapefile, with a few exceptions: `:OBJECTID => :id, :MEAN_mean => :height_mean, :MIN_min => :height_min, :MAX_max => :height_max`.
+Polygons are stored in the `geometry` column in `EPSG 4326` crs.
+
+The dataframe has metadata of `center_lat` and `center_lon`, representing the central latitude and longitude of the bounding Box, applied.
+"""
 function load_british_shapefiles(path; bbox=nothing)
     df = GeoDataFrames.read(path)
 
@@ -11,14 +22,9 @@ function load_british_shapefiles(path; bbox=nothing)
 
     start_crs = ArchGDAL.getspatialref(df.geometry[1])
 
-    # all transformations to and from EPSG(4326) have to use importEPSG(5326; order: trad)
+    # all transformations to and from EPSG(4326) have to use importEPSG(4326; order: trad)
     # otherwise plotting gets messed up.
-    target_crs = ArchGDAL.importEPSG(4326; order=:trad)
-    ArchGDAL.createcoordtrans(start_crs, target_crs) do trans
-        for geo in df.geometry
-            ArchGDAL.transform!(geo, trans)
-        end
-    end
+    project_back!(df.geomerty)
     if bbox === nothing
         bbox = BoundingBox(df.geometry)
     else
