@@ -11,7 +11,8 @@ Thunbs.db
 ###############
 /Manifest.toml
 /docs/build/
-/Nottingham/*
+/test/data/nottingham/
+
 
 arghgdal.jl
 architechture_considerations.md

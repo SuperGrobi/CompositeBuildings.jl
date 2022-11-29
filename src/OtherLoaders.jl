@@ -24,7 +24,7 @@ function load_british_shapefiles(path; bbox=nothing)
 
     # all transformations to and from EPSG(4326) have to use importEPSG(4326; order: trad)
     # otherwise plotting gets messed up.
-    project_back!(df.geomerty)
+    project_back!(df.geometry)
     if bbox === nothing
         bbox = BoundingBox(df.geometry)
     else
