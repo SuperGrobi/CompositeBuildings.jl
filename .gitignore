@@ -12,6 +12,7 @@ Thunbs.db
 /Manifest.toml
 /docs/build/
 /test/data/nottingham/
+/test/data/manhattan/
 
 
 arghgdal.jl
