@@ -1,9 +1,20 @@
 using CompositeBuildings
+using DataFrames
+using ArchGDAL
+using GeoInterface
 using Plots
+using ProgressMeter
+using Folium
 
-datapath = joinpath(homedir(), "Desktop/Masterarbeit/data/Nottingham/")
-buildings = load_british_shapefiles(joinpath(datapath, "Nottingham.shp"); bbox=(minlon=-1.2, minlat=52.89, maxlon=-1.165, maxlat=52.92))
+datapath = joinpath(homedir(), "Desktop/Masterarbeit/CoolWalksAnalysis/data/exp_raw/")
 
-shadows = CompositeBuildings.cast_shadow(buildings, :height_mean, [1.0, -0.5, 0.4])
 
-plot(first(shadows.geometry, 5))
+c = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"); bbox=(minlon=-1.2, minlat=52.89, maxlon=-1.165, maxlat=52.92))
+
+b = load_new_york_shapefiles(joinpath(datapath, "manhattan/manhattan.shp"))
+
+smalls = filter(:heightroof => h -> h isa Missing, b)
+
+
+plot(c.geometry[1])
+draw(b.geometry; stroke=true)
