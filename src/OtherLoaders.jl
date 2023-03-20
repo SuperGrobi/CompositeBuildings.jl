@@ -80,6 +80,7 @@ function load_new_york_shapefiles(path; bbox=nothing)
     end
     rename!(df, Dict(:doitt_id => :id))
     dropmissing!(df, :heightroof)
+    df.heightroof .*= 0.3048  # Americans cant unit.
     metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon) / 2; style=:note)
     metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat) / 2; style=:note)
     return df
