@@ -13,7 +13,7 @@ GeoInterface = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 
 [compat]
-ArchGDAL = "0.9, 0.10"
+ArchGDAL = "0.9"
 DataFrames = "1.4"
 GeoDataFrames = "0.3"
 GeoFormatTypes = "0.4"
