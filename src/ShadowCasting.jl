@@ -20,8 +20,8 @@ returns
 shadow_cleanup(shadow) = shadow_cleanup(geomtrait(shadow), shadow)
 shadow_cleanup(::PolygonTrait, shadow) = shadow
 function shadow_cleanup(::GeometryCollectionTrait, shadow)
-    polygons = filter(x->geomtrait(x) isa PolygonTrait, collect(getgeom(shadow)))
-    multi_polygons = filter(x->geomtrait(x) isa MultiPolygonTrait, collect(getgeom(shadow)))
+    polygons = filter(x -> geomtrait(x) isa PolygonTrait, collect(getgeom(shadow)))
+    multi_polygons = filter(x -> geomtrait(x) isa MultiPolygonTrait, collect(getgeom(shadow)))
     if length(polygons) == 1 && length(multi_polygons) == 0
         return first(polygons)
     else
@@ -49,55 +49,104 @@ function cast_shadow(buildings_df, height_key, sun_direction::AbstractArray)
     project_local!(buildings_df.geometry, metadata(buildings_df, "center_lon"), metadata(buildings_df, "center_lat"))
 
     shadow_df = DataFrame(geometry=typeof(buildings_df.geometry)(), id=typeof(buildings_df.id)())
-    
+
     for key in metadatakeys(buildings_df)
         metadata!(shadow_df, key, metadata(buildings_df, key); style=:note)
     end
 
     # find offset vector
-    offset_vector = - sun_direction ./ sun_direction[3]
-    offset_vector[3] = 0
+    offset_vector = -sun_direction[1:2] ./ sun_direction[3]
+    orthogonal_vector = [-offset_vector[2], offset_vector[1]]
 
     @showprogress 1 "calculating shadows" for row in eachrow(buildings_df)
-        o = getproperty(row, height_key) * offset_vector
-        lower_ring = GeoInterface.getgeom(row.geometry, 1)
-        upper_ring = GeoInterface.getgeom(row.geometry, 1)
-
-        # move upper ring to the projected position
-        for i in 0:ArchGDAL.ngeom(upper_ring)-1
-            x = ArchGDAL.getx(upper_ring, i) + o[1]
-            y = ArchGDAL.gety(upper_ring, i) + o[2]
-            ArchGDAL.setpoint!(upper_ring, i, x, y)
+        lower_ring = getgeom(row.geometry, 1)
+        points = hcat((collect(getcoord(x)) for x in getgeom(lower_ring))...)
+        height = getproperty(row, height_key)
+        full_shadow = if is_convex(points)
+            extrude_simple(points, offset_vector * height, orthogonal_vector)
+        else
+            cast_shadow_explicit(points, offset_vector * height)
         end
-
-        # build vector of (projected) outer polygons
-        outer_shadow = ArchGDAL.createpolygon()
-        for i in 0:ArchGDAL.ngeom(upper_ring) - 2
-            pl1 = ArchGDAL.getpoint(lower_ring, i)[1:end-1]
-            pu1 = ArchGDAL.getpoint(upper_ring, i)[1:end-1]
-            pl2 = ArchGDAL.getpoint(lower_ring, i+1)[1:end-1]
-            pu2 = ArchGDAL.getpoint(upper_ring, i+1)[1:end-1]
-            # buffer to prevent numerical problems when taking union of two polygons sharing only an edge
-            # comes at the cost of twice the polycount in the final shadow
-            outer_poly = ArchGDAL.buffer(ArchGDAL.createpolygon([pl1, pl2, pu2, pu1, pl1]), 0.001, 1)
-            outer_shadow = ArchGDAL.union(outer_shadow, outer_poly)
-        end
-        holeless_lower_poly = ArchGDAL.createpolygon()
-        ArchGDAL.addgeom!(holeless_lower_poly, lower_ring)
-        
-        crs = ArchGDAL.getspatialref(row.geometry)
-        ArchGDAL.createcoordtrans(crs, crs) do trans
-            ArchGDAL.transform!(outer_shadow, trans)
-            ArchGDAL.transform!(holeless_lower_poly, trans)
-        end
-        
-
-        full_shadow = shadow_cleanup(ArchGDAL.union(outer_shadow, holeless_lower_poly))
+        reinterp_crs!(full_shadow, ArchGDAL.getspatialref(row.geometry))
         push!(shadow_df, [full_shadow, row.id])
     end
-
     project_back!(buildings_df.geometry)
     project_back!(shadow_df.geometry)
 
     return shadow_df
+end
+
+function cast_shadow_explicit(points, offset_vector)
+    # build and unionise outer polygons
+    outer_shadow = ArchGDAL.createpolygon()
+    for i in 1:size(points, 2)-1
+        pl1 = points[:, i]
+        pu1 = points[:, i] + offset_vector
+        pl2 = points[:, i+1]
+        pu2 = points[:, i+1] + offset_vector
+        # buffer to prevent numerical problems when taking union of two polygons sharing only an edge
+        # comes at the cost of twice the polycount in the final shadow
+        outer_poly = ArchGDAL.buffer(ArchGDAL.createpolygon([pl1, pl2, pu2, pu1, pl1]), 0.001, 1)
+        outer_shadow = ArchGDAL.union(outer_shadow, outer_poly)
+    end
+    holeless_lower_poly = ArchGDAL.createpolygon(points[1, :], points[2, :])
+
+    return shadow_cleanup(ArchGDAL.union(outer_shadow, holeless_lower_poly))
+end
+
+function extrude_simple(points, offset_vector, orthogonal_vector)
+    proj_orv = @view(points[:, 1:end-1])' * orthogonal_vector
+    n_points = length(proj_orv)
+    max_ind = argmax(proj_orv)
+    min_ind = argmin(proj_orv)
+
+    max_ind_right = mod1(max_ind + 1, n_points)
+    max_ind_left = mod1(max_ind - 1, n_points)
+
+    max_right = (points[:, max_ind_right])' * offset_vector
+    max_left = (points[:, max_ind_left])' * offset_vector
+
+    direction = max_left > max_right ? 1 : -1
+
+    natural_direction = sign(min_ind - max_ind)
+
+
+    if natural_direction == direction
+        lower_indices = max_ind:direction:min_ind
+    else
+        lower_indices = mod1.(max_ind:direction:min_ind+direction*length(proj_orv), length(proj_orv))
+    end
+
+    if natural_direction == direction
+        upper_indices = mod1.(min_ind:direction:max_ind+direction*length(proj_orv), length(proj_orv))
+    else
+        upper_indices = min_ind:direction:max_ind
+    end
+
+    points = points[:, [lower_indices; upper_indices; [lower_indices[1]]]]
+    nlp = length(lower_indices)
+    for i in 1:length(upper_indices)
+        points[1, i+nlp] += offset_vector[1]
+        points[2, i+nlp] += offset_vector[2]
+    end
+
+    return ArchGDAL.createpolygon(points[1, :], points[2, :])
+end
+
+function is_convex(geom::ArchGDAL.IGeometry)
+    lower_ring = getgeom(geom, 1)
+    points = hcat((collect(getcoord(x)) for x in getgeom(lower_ring))...)
+    is_convex(points)
+end
+
+function is_convex(points)
+    # turning direction where polygon closes
+    direction = is_ccw(points[:, end-1], points[:, 1], points[:, 2])
+    for i in 1:size(points, 2)-2
+        current_direction = is_ccw(points[:, i], points[:, i+1], points[:, i+2])
+        if current_direction != direction
+            return false
+        end
+    end
+    return true
 end
