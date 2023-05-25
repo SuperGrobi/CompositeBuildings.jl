@@ -1,3 +1,8 @@
+function convex_report(df)
+    n_conv = sum(is_convex, df.geometry)
+    @info "$n_conv out of $(nrow(df)) Buildings are convex. ($(round(100n_conv/nrow(df), digits=1))%)"
+end
+
 """
     load_british_shapefiles(path; bbox=nothing)
 
@@ -5,7 +10,7 @@ loads the shapefiles of the largest cities in great britain, provided by [emu an
 into dataframes, possibly clipping along a named tuple `BoundingBox` with names `(minlon, minlat, maxlon, maxlat)`.
 
 Returns a dataframe with the columns given in the shapefile, with a few exceptions: `:OBJECTID => :id, :MEAN_mean => :height_mean, :MIN_min => :height_min, :MAX_max => :height_max`.
-Polygons are stored in the `geometry` column in `EPSG 4326` crs.
+Polygons are stored in the `geometry` column in `EPSG 4326` crs. Only rows where `:height_mean>0` are returned.
 
 The dataframe has metadata of `center_lat` and `center_lon`, representing the central latitude and longitude of the bounding Box, applied.
 """
@@ -51,6 +56,8 @@ function load_british_shapefiles(path; bbox=nothing)
 
     metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon) / 2; style=:note)
     metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat) / 2; style=:note)
+    filter!(:height_mean => >(0), df)
+    convex_report(df)
     return df
 end
 
@@ -60,7 +67,7 @@ end
 loads the shapefiles containing building footprints and heights provided by [the city of new york](https://data.cityofnewyork.us/Housing-Development/Building-Footprints/nqwf-w8eh)
 into dataframes, possibly clipping along a named tuple `BoundingBox` with names `(minlon, minlat, maxlon, maxlat)`.
 
-Returns a dataframe with the columns given in the shapefile.
+Returns a dataframe with the columns given in the shapefile, only rows where `heightroof` is not `missing` and larger than 0 are returned.
 Polygons are stored in the `geometry` column in `EPSG 4326` crs.
 
 The dataframe has metadata of `center_lat` and `center_lon`, representing the central latitude and longitude of the bounding Box, applied.
@@ -83,5 +90,7 @@ function load_new_york_shapefiles(path; bbox=nothing)
     df.heightroof .*= 0.3048  # Americans cant unit.
     metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon) / 2; style=:note)
     metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat) / 2; style=:note)
+    filter!(:heightroof => >(0), df)
+    convex_report(df)
     return df
 end
