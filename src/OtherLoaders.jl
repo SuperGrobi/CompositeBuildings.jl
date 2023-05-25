@@ -39,20 +39,8 @@ function load_british_shapefiles(path; bbox=nothing)
         df = filter(:geometry => x -> intersects(x, bbox_arch), df)
     end
 
-    poly_df = filter(:geometry => x -> x isa ArchGDAL.IGeometry{ArchGDAL.wkbPolygon}, df)
-    index = maximum(df.id) + 1
-    multipoly_df = filter(:geometry => x -> x isa ArchGDAL.IGeometry{ArchGDAL.wkbMultiPolygon}, df)
-    polysplit_df = DataFrame()
-    for row in eachrow(multipoly_df)
-        for polygon in getgeom(row.geometry)
-            row.geometry = polygon
-            row.id = index
-            push!(polysplit_df, row)
-            index += 1
-        end
-    end
-
-    df = append!(poly_df, polysplit_df)
+    transform!(df, [:geometry, :id] => ByRow(split_multi_poly) => [:geometry, :id])
+    df = flatten(df, [:geometry, :id])
 
     metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon) / 2; style=:note)
     metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat) / 2; style=:note)
