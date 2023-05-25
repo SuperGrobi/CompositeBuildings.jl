@@ -59,8 +59,7 @@ function cast_shadow(buildings_df, height_key, sun_direction::AbstractArray)
     orthogonal_vector = [-offset_vector[2], offset_vector[1]]
 
     @showprogress 1 "calculating shadows" for row in eachrow(buildings_df)
-        lower_ring = getgeom(row.geometry, 1)
-        points = hcat((collect(getcoord(x)) for x in getgeom(lower_ring))...)
+        points = to_points(row.geometry)
         height = getproperty(row, height_key)
         full_shadow = if is_convex(points)
             extrude_simple(points, offset_vector * height, orthogonal_vector)
@@ -133,20 +132,9 @@ function extrude_simple(points, offset_vector, orthogonal_vector)
     return ArchGDAL.createpolygon(points[1, :], points[2, :])
 end
 
-function is_convex(geom::ArchGDAL.IGeometry)
+function to_points(geom)
     lower_ring = getgeom(geom, 1)
-    points = hcat((collect(getcoord(x)) for x in getgeom(lower_ring))...)
-    is_convex(points)
+    return hcat((collect(getcoord(x)) for x in getgeom(lower_ring))...)
 end
 
-function is_convex(points)
-    # turning direction where polygon closes
-    direction = is_ccw(points[:, end-1], points[:, 1], points[:, 2])
-    for i in 1:size(points, 2)-2
-        current_direction = is_ccw(points[:, i], points[:, i+1], points[:, i+2])
-        if current_direction != direction
-            return false
-        end
-    end
-    return true
-end
+CoolWalksUtils.is_convex(geom::ArchGDAL.IGeometry) = geom |> to_points |> is_convex
