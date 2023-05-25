@@ -11,6 +11,7 @@ GeoDataFrames = "62cb38b5-d8d2-4862-a48e-6a340996859f"
 GeoFormatTypes = "68eda718-8dee-11e9-39e7-89f7f65f511f"
 GeoInterface = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+SpatialIndexing = "d4ead438-fe20-5cc5-a293-4fd39a41b74c"
 
 [compat]
 ArchGDAL = "0.9"

@@ -5,13 +5,20 @@ using GeoInterface
 using Plots
 using ProgressMeter
 using Folium
+using BenchmarkTools
 
 datapath = joinpath(homedir(), "Desktop/Masterarbeit/CoolWalksAnalysis/data/exp_raw/")
 
 
+
 c = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"); bbox=(minlon=-1.2, minlat=52.89, maxlon=-1.165, maxlat=52.92))
+d = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"); bbox=(minlon=-1.2, minlat=52.89, maxlon=-1.165, maxlat=52.92))
+filter!(:id => i -> rand() > 0.5, d)
+
+@benchmark relate_buildings(d, c)
 
 b = load_new_york_shapefiles(joinpath(datapath, "manhattan/manhattan.shp"))
+
 
 p = ArchGDAL.pointonsurface.(b.geometry)
 g = b.geometry

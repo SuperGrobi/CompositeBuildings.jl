@@ -7,6 +7,7 @@ using DataFrames
 using GeoDataFrames
 using GeoFormatTypes
 using ProgressMeter
+using SpatialIndexing
 
 export relate_buildings
 include("relate_buildings.jl")
