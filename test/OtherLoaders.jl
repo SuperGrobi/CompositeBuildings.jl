@@ -13,3 +13,7 @@ end
 @testset "load_new_york_shapefiles" begin
     @test_skip "add local tests to check if loading of new york is happening correctly"
 end
+
+@testset "load_spain_shapefiles" begin
+    @test_skip "add local tests to check if loading of spain shapefiles is happening correctly"
+end

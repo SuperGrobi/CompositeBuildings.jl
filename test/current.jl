@@ -225,3 +225,53 @@ CompositeBuildings.extrude_simple(points, [-10, 0], [0, -10]) |> plot
 end
 
 @view(points[:, 3]) + [100000, 100000]
+
+sdf = download_spain_overview()
+
+rdf = download_spain_region_overview(2)
+
+begin
+    f = draw()
+    for i in eachrow(rdf)
+        draw!(f, i.geometry, stroke=true, fill_opacity=0, tooltip=i.title, popup=i.title)
+    end
+    fit_bounds!(f)
+end
+using Downloads
+
+download_spain_subregion(filter(:id => ==(2078), rdf).url[1], joinpath(datapath, "spain/2078"))
+
+spain_df = load_spain_shapefiles(joinpath(datapath, "spain/2078/A.ES.SDGC.BU.02078.building.gml"))
+
+draw(spain_df[3, :].geometry)
+
+b1 = spain_df[3, :].geometry
+
+ArchGDAL.geomarea.(getgeom(b1))
+
+names(spain_df)
+using CoolWalksUtils
+
+project_back!(spain_df)
+
+draw(spain_df.geometry)
+
+spain_df.geomtype = typeof.(spain_df.geometry)
+
+spain_df.ng = ngeom.(spain_df.geometry)
+spain_df
+
+groupby(spain_df, :geomtype)
+
+using Plots
+begin
+    histogram(spain_df.floor_approx)
+    vline!([1, 2, 3])
+end
+
+draw(spain_df[5, :geometry])
+
+spain_df
+
+spain_test = transform(groupby(spain_df, :geomtype), [:geometry, :id] => ByRow(split_multi_poly) => [:sg, :sid])
+flatten(spain_test, [:sg, :sid])
