@@ -26,9 +26,6 @@ include("OtherLoaders.jl")
 export download_spain_overview,
     download_spain_region_overview,
     download_spain_subregion,
-    load_spain_buildings_shapefiles,
-    load_spain_parts_shapefiles,
-    relate_floors,
     preprocess_spain_subregion,
     load_spain_processed_buildings
 include("SpainLoaders.jl")
