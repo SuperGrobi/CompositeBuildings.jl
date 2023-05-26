@@ -51,16 +51,18 @@ function download_spain_subregion(url, savepath)
     savename = savepath * ".zip"
     if !ispath(savepath)
         Downloads.download(replace(url, " " => "%20"), savename)
-        run(`unzip $savename -d $savepath`)
+        unzipdir = joinpath(savepath, "raw")
+        mkpath(unzipdir)
+        run(`unzip $savename -d $unzipdir`)
         rm(savename)
     else
         @warn "The path $savepath already exists."
     end
 end
 
-function load_spain_shapefiles(path; bbox=nothing)
+function load_spain_buildings_shapefiles(path; bbox=nothing)
     df = GeoDataFrames.read(path)
-    df.myarea = ArchGDAL.geomarea.(df.geometry)
+    df.myArea = ArchGDAL.geomarea.(df.geometry)
     project_back!(df)
 
     if bbox === nothing
@@ -71,9 +73,31 @@ function load_spain_shapefiles(path; bbox=nothing)
         apply_wsg_84!(bbox_arch)
         filter!(:geometry => x -> intersects(x, bbox_arch), df)
     end
-    select!(df, :geometry, :informationSystem, :localId => :id, :currentUse, :numberOfFloorsAboveGround => :nFloors, :documentLink, :value => :area, :myarea)
-    df.floor_approx = df.area ./ df.myarea
+    df.nFloors_approx = df.value ./ df.myArea
+    select!(
+        df, :localId => :id,
+        :localId => :building_id,
+        :geometry,
+        :numberOfFloorsAboveGround => :nFloors,
+        :nFloors_approx,
+        :value => :area,
+        :myArea,
+        :currentUse,
+        :documentLink,
+        :gml_id,
+        :informationSystem
+    )
 
+
+    # check if there are some buildings with actual floors. If not, delete the column
+    missing_floors = count(ismissing, df.nFloors)
+    if missing_floors != nrow(df)
+        @info "$(nrow(df) - missing_floors) buildings have a non missing number of floors."
+    else
+        select!(df, Not(:nFloors))
+    end
+
+    # flatten multipolygons to just polygons
     transform!(df, [:geometry, :id] => ByRow(split_multi_poly) => [:geometry, :id])
     df = flatten(df, [:geometry, :id])
 
@@ -84,5 +108,70 @@ function load_spain_shapefiles(path; bbox=nothing)
 end
 
 function load_spain_parts_shapefiles(path; bbox=nothing)
+    df = GeoDataFrames.read(path)
+    dropmissing!(df, :numberOfFloorsAboveGround)
+    df.myArea = ArchGDAL.geomarea.(df.geometry)
+    project_back!(df)
 
+    if bbox === nothing
+        bbox = BoundingBox(df.geometry)
+    else
+        # clip dataframe
+        bbox_arch = createpolygon([(bbox.minlon, bbox.minlat), (bbox.minlon, bbox.maxlat), (bbox.maxlon, bbox.maxlat), (bbox.maxlon, bbox.minlat), (bbox.minlon, bbox.minlat)])
+        apply_wsg_84!(bbox_arch)
+        filter!(:geometry => x -> intersects(x, bbox_arch), df)
+    end
+    select!(df, :localId => :id, :geometry, :numberOfFloorsAboveGround => :nFloors, :myArea, :gml_id)
+    transform!(df, [:geometry, :id] => ByRow(split_multi_poly) => [:geometry, :id])
+    df = flatten(df, [:geometry, :id])
+    transform!(df, :id => ByRow(id -> split(id, "_part")[1]) => :building_id)
+    return df
+end
+
+function relate_floors(buildings, buildings_parts)
+    project_local!(buildings)
+    project_local!(buildings_parts, metadata(buildings, "center_lon"), metadata(buildings, "center_lat"))
+    all_data = innerjoin(buildings, buildings_parts, on=:building_id, renamecols="" => "_part")
+    transform!(all_data, [:geometry, :geometry_part] => ByRow((a, b) -> ArchGDAL.geomarea(ArchGDAL.intersection(a, b))) => :overlap)
+    all_data_grouped = groupby(all_data, :id)
+    all_data_combined = combine(
+        all_data_grouped, names(buildings) .=> first .=> names(buildings),
+        :myArea_part => sum => :myArea_part,
+        [:overlap, :nFloors_part] => ((ol, fl) -> mapreduce(*, +, ol, fl) / sum(ol)) => :nFloors_overlap
+    )
+    transform!(all_data_combined, [:area, :myArea_part] => ByRow(/) => :nFloors_part_approx)
+
+    select!(all_data_combined, :id, :geometry, :nFloors_overlap, :nFloors_approx, :nFloors_part_approx, :area, :myArea, :myArea_part, :currentUse, :documentLink)
+    project_back!(all_data_combined)
+end
+
+function preprocess_spain_subregion(path; bbox=nothing)
+    filenames = readdir(joinpath(path, "raw"))
+    buildings_name = findfirst(n -> occursin("building.gml", n), filenames)
+    parts_name = findfirst(n -> occursin("buildingpart.gml", n), filenames)
+
+    buildings = load_spain_buildings_shapefiles(joinpath(path, "raw", filenames[buildings_name]); bbox=bbox)
+    building_parts = load_spain_parts_shapefiles(joinpath(path, "raw", filenames[parts_name]); bbox=bbox)
+    buildings_with_floors = relate_floors(buildings, building_parts)
+    GeoDataFrames.write(joinpath(path, "buildings.geojson"), buildings_with_floors)
+    return buildings_with_floors
+end
+
+function load_spain_processed_buildings(path; bbox=nothing)
+    filepath = joinpath(path, "buildings.geojson")
+    @assert isfile(filepath) "$filepath does not exist."
+    @show filepath
+    df = GeoDataFrames.read(filepath)
+    if bbox === nothing
+        bbox = BoundingBox(df.geometry)
+    else
+        # clip dataframe
+        bbox_arch = createpolygon([(bbox.minlon, bbox.minlat), (bbox.minlon, bbox.maxlat), (bbox.maxlon, bbox.maxlat), (bbox.maxlon, bbox.minlat), (bbox.minlon, bbox.minlat)])
+        apply_wsg_84!(bbox_arch)
+        filter!(:geometry => x -> intersects(x, bbox_arch), df)
+    end
+    metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon) / 2; style=:note)
+    metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat) / 2; style=:note)
+    convex_report(df)
+    return df
 end

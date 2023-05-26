@@ -8,6 +8,7 @@ using Folium
 using CoolWalksUtils
 using Dates
 using BenchmarkTools
+using GeoDataFrames
 
 datapath = joinpath(homedir(), "Desktop/Masterarbeit/CoolWalksAnalysis/data/exp_raw/")
 
@@ -241,7 +242,11 @@ using Downloads
 
 download_spain_subregion(filter(:id => ==(2078), rdf).url[1], joinpath(datapath, "spain/2078"))
 
-spain_df = load_spain_shapefiles(joinpath(datapath, "spain/2078/A.ES.SDGC.BU.02078.building.gml"))
+spain_df = load_spain_buildings_shapefiles(joinpath(datapath, "spain/2078/raw/A.ES.SDGC.BU.02078.building.gml"))
+spain_parts_df = load_spain_parts_shapefiles(joinpath(datapath, "spain/2078/raw/A.ES.SDGC.BU.02078.buildingpart.gml"))
+
+preprocess_spain_subregion(joinpath(datapath, "spain", "2078"))
+
 
 draw(spain_df[3, :].geometry)
 
@@ -275,3 +280,41 @@ spain_df
 
 spain_test = transform(groupby(spain_df, :geomtype), [:geometry, :id] => ByRow(split_multi_poly) => [:sg, :sid])
 flatten(spain_test, [:sg, :sid])
+
+begin
+    f = draw(spain_df[7, :geometry])
+    for i in eachrow(spain_df)
+        #draw!(f, i.geometry, tooltip=i.id)
+    end
+    n = 6
+    #draw!(f, spain_df[1, :geometry], color=:green)
+    for i in eachrow(spain_parts_df[1:n, :])
+        #draw!(f, i.geometry, color=[:blue, :green, :red][i.nFloors+1], tooltip=string(i.nFloors, " ", i.id))
+    end
+    #fit_bounds!(f, collect(eachrow(b)))
+    f
+end
+
+b = f.obj.get_bounds()
+
+floors = relate_floors(spain_df, spain_parts_df)
+
+
+floors[4, :documentLink]
+
+floors[1706, :documentLink]
+
+combine(floors, [:area, :myArea] .=> first .=> [:area, :myArea], :myArea_part => sum => :myArea_part)
+
+crs(floors)
+
+
+GeoDataFrames.write(joinpath(datapath, "test.geojson"), floors)
+GeoDataFrames.read(joinpath(datapath, "2078", "buildings.geojson"))
+GeoDataFrames.read()
+
+drivers = DataFrame(:name => keys(ArchGDAL.listdrivers()) |> collect, :description => values(ArchGDAL.listdrivers()) |> collect)
+
+draw(floors.geometry)
+
+bs = load_spain_processed_buildings((joinpath(datapath, "spain", "2078")))
