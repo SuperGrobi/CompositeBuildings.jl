@@ -1,13 +1,30 @@
-function download_spain_overview()
-    df = parse_spain_xml("https://www.catastro.minhap.es/INSPIRE/buildings/ES.SDGC.BU.atom.xml")
-    transform!(df, :title => parse_region_id => :id)
+"""
+
+    parse_polygon_string(polystring)
+
+parses a string of the form `"lat1 lon1 lat2 lon2..."` or `"lat1\tlon1\tlat2\tlon2..."`
+into an `ArchGDAL` polygon.
+"""
+function parse_polygon_string(polystring)
+    points = split(strip(polystring), [' ', '\t']) .|> s -> parse(Float64, s)
+    ArchGDAL.createpolygon(points[2:2:end], points[1:2:end])
 end
 
-function download_spain_region_overview(region_id, spain_overview=download_spain_overview())
-    df = filter(:id => ==(region_id), spain_overview).url[1] |> parse_spain_xml
-    transform!(df, :title => parse_subregion_id => :id)
+function parse_region_id(regionstring)
+    parse(Int, split(regionstring, " ")[3])
 end
 
+function parse_subregion_id(srs)
+    parse(Int, split(srs, "-")[1])
+end
+
+"""
+
+    parse_spain_xml(url)
+
+Reads an XML Document from the Spanish Cadastral Dataset (see (here)[https://www.catastro.minhap.es/INSPIRE/buildings/ES.SDGC.BU.atom.xml] for an example)
+and parses it into a dataframe containing information about the regions described within it.
+"""
 function parse_spain_xml(url)
     xmldoc = HTTP.get(url).body |> String |> LightXML.parse_string
     df = DataFrame("title" => String[], "polygon" => String[], "id" => String[])
@@ -23,30 +40,41 @@ function parse_spain_xml(url)
         end
     end
     free(xmldoc)
-    transform!(df, :polygon => parse_polygon_strings => :geometry)
+    transform!(df, :polygon => ByRow(parse_polygon_string) => :geometry)
     rename!(df, :id => :url)
     select!(df, Not(:polygon))
 end
 
-function parse_polygon_strings(polystrings)
-    map(polystrings) do polystring
-        points = split(strip(polystring), [' ', '\t']) .|> s -> parse(Float64, s)
-        ArchGDAL.createpolygon(points[2:2:end], points[1:2:end])
-    end
+"""
+
+    download_spain_overview()
+
+Downloads and parses the xml file at https://www.catastro.minhap.es/INSPIRE/buildings/ES.SDGC.BU.atom.xml
+"""
+function download_spain_overview()
+    df = parse_spain_xml("https://www.catastro.minhap.es/INSPIRE/buildings/ES.SDGC.BU.atom.xml")
+    transform!(df, :title => ByRow(parse_region_id) => :id)
 end
 
-function parse_region_id(regionstrings)
-    map(regionstrings) do regionstring
-        parse(Int, split(regionstring, " ")[3])
-    end
+"""
+
+    download_spain_region_overview(region_id, spain_overview=download_spain_overview())
+
+Downloads and parses the xml corresponding to the `region_id` from the cadastral dataset.
+Can optionally take the result from `download_spain_overview()`, to reduce the number of server calls.
+"""
+function download_spain_region_overview(region_id, spain_overview=download_spain_overview())
+    df = filter(:id => ==(region_id), spain_overview).url[1] |> parse_spain_xml
+    transform!(df, :title => ByRow(parse_subregion_id) => :id)
 end
 
-function parse_subregion_id(sregstrings)
-    map(sregstrings) do srs
-        parse(Int, split(srs, "-")[1])
-    end
-end
+"""
 
+    download_spain_subregion(url, savepath)
+
+Downloads the zip file at `url` (element of `download_spain_region_overview(...).url`) to `savepath.zip`,
+extracts it to `savepath/raw`, and deletes the zip file.
+"""
 function download_spain_subregion(url, savepath)
     savename = savepath * ".zip"
     if !ispath(savepath)
@@ -60,7 +88,14 @@ function download_spain_subregion(url, savepath)
     end
 end
 
-function load_spain_buildings_shapefiles(path; bbox=nothing)
+"""
+
+    load_spain_buildings_gml(path; bbox=nothing)
+
+Loads the file at `path` with `GeoDataFrames`, and applies some transformations that only make sense if it is a
+buildings file from the spanish cadastral dataset.
+"""
+function load_spain_buildings_gml(path; bbox=nothing)
     df = GeoDataFrames.read(path)
     df.myArea = ArchGDAL.geomarea.(df.geometry)
     project_back!(df)
@@ -107,7 +142,14 @@ function load_spain_buildings_shapefiles(path; bbox=nothing)
     return df
 end
 
-function load_spain_parts_shapefiles(path; bbox=nothing)
+"""
+
+    load_spain_parts_gml(path; bbox=nothing)
+
+Loads the file at `path` with `GeoDataFrames`, and applies some transformations that only make sense if it is a
+buildingparts file from the spanish cadastral dataset.
+"""
+function load_spain_parts_gml(path; bbox=nothing)
     df = GeoDataFrames.read(path)
     dropmissing!(df, :numberOfFloorsAboveGround)
     df.myArea = ArchGDAL.geomarea.(df.geometry)
@@ -128,6 +170,12 @@ function load_spain_parts_shapefiles(path; bbox=nothing)
     return df
 end
 
+"""
+
+    relate_floors(buildings, buildings_parts)
+
+Infers the number of floors a building in `buildings` might have, given the data present in the its constituent `buildings_parts` by various different methods.
+"""
 function relate_floors(buildings, buildings_parts)
     project_local!(buildings)
     project_local!(buildings_parts, metadata(buildings, "center_lon"), metadata(buildings, "center_lat"))
@@ -145,18 +193,31 @@ function relate_floors(buildings, buildings_parts)
     project_back!(all_data_combined)
 end
 
+"""
+
+    preprocess_spain_subregion(path; bbox=nothing)
+
+
+Loads buildings and building parts form `path/raw`, and save the result of `relate_floors(...)` to `path/buildings.geojson`
+"""
 function preprocess_spain_subregion(path; bbox=nothing)
     filenames = readdir(joinpath(path, "raw"))
     buildings_name = findfirst(n -> occursin("building.gml", n), filenames)
     parts_name = findfirst(n -> occursin("buildingpart.gml", n), filenames)
 
-    buildings = load_spain_buildings_shapefiles(joinpath(path, "raw", filenames[buildings_name]); bbox=bbox)
-    building_parts = load_spain_parts_shapefiles(joinpath(path, "raw", filenames[parts_name]); bbox=bbox)
+    buildings = load_spain_buildings_gml(joinpath(path, "raw", filenames[buildings_name]); bbox=bbox)
+    building_parts = load_spain_parts_gml(joinpath(path, "raw", filenames[parts_name]); bbox=bbox)
     buildings_with_floors = relate_floors(buildings, building_parts)
     GeoDataFrames.write(joinpath(path, "buildings.geojson"), buildings_with_floors)
     return buildings_with_floors
 end
 
+"""
+
+    load_spain_processed_buildings(path; bbox=nothing)
+
+loads the files saved by `preprocess_spain_subregion(...)` from `path/buildings.geojson` and adds metadata for projection.
+"""
 function load_spain_processed_buildings(path; bbox=nothing)
     filepath = joinpath(path, "buildings.geojson")
     @assert isfile(filepath) "$filepath does not exist."
