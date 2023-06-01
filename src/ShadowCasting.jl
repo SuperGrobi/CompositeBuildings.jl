@@ -102,8 +102,12 @@ function extrude_simple(points, offset_vector, orthogonal_vector)
     max_ind_right = mod1(max_ind + 1, n_points)
     max_ind_left = mod1(max_ind - 1, n_points)
 
-    max_right = (points[:, max_ind_right])' * offset_vector
-    max_left = (points[:, max_ind_left])' * offset_vector
+    # find the index, where the angle between offset_vector and outgoing edge is smaller.
+    # that is the direction of the upper indices...
+    r_max = points[:, max_ind_right] - points[:, max_ind]
+    r_min = points[:, max_ind_left] - points[:, max_ind]
+    max_right = unit(r_max)' * offset_vector
+    max_left = unit(r_min)' * offset_vector
 
     direction = max_left > max_right ? 1 : -1
 
