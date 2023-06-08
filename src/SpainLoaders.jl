@@ -152,6 +152,7 @@ buildingparts file from the spanish cadastral dataset.
 function load_spain_parts_gml(path; bbox=nothing)
     df = GeoDataFrames.read(path)
     dropmissing!(df, :numberOfFloorsAboveGround)
+    #filter!(:numberOfFloorsAboveGround => <(70), df)
     df.myArea = ArchGDAL.geomarea.(df.geometry)
     project_back!(df)
 
@@ -166,7 +167,9 @@ function load_spain_parts_gml(path; bbox=nothing)
     select!(df, :localId => :id, :geometry, :numberOfFloorsAboveGround => :nFloors, :myArea, :gml_id)
     transform!(df, [:geometry, :id] => ByRow(split_multi_poly) => [:geometry, :id])
     df = flatten(df, [:geometry, :id])
+    filter!(:geometry => ArchGDAL.isvalid, df)
     transform!(df, :id => ByRow(id -> split(id, "_part")[1]) => :building_id)
+    convex_report(df)
     return df
 end
 
@@ -185,11 +188,15 @@ function relate_floors(buildings, buildings_parts)
     all_data_combined = combine(
         all_data_grouped, names(buildings) .=> first .=> names(buildings),
         :myArea_part => sum => :myArea_part,
+        :nFloors_part => maximum => :maxFloors_part,
         [:overlap, :nFloors_part] => ((ol, fl) -> mapreduce(*, +, ol, fl) / sum(ol)) => :nFloors_overlap
     )
     transform!(all_data_combined, [:area, :myArea_part] => ByRow(/) => :nFloors_part_approx)
+    filter!(:nFloors_overlap => !isnan, all_data_combined)
+    @info "$(count(>(75), all_data_combined.maxFloors_part)) out of $(nrow(all_data_combined)) will be filtered du to too more than 75 levels in a part."
+    filter!(:maxFloors_part => <=(75), all_data_combined)
 
-    select!(all_data_combined, :id, :geometry, :nFloors_overlap, :nFloors_approx, :nFloors_part_approx, :area, :myArea, :myArea_part, :currentUse, :documentLink)
+    select!(all_data_combined, :id, :geometry, :nFloors_overlap, :nFloors_approx, :nFloors_part_approx, :area, :myArea, :myArea_part, :currentUse, :documentLink, :maxFloors_part)
     project_back!(all_data_combined)
 end
 
@@ -208,6 +215,7 @@ function preprocess_spain_subregion(path; bbox=nothing)
     buildings = load_spain_buildings_gml(joinpath(path, "raw", filenames[buildings_name]); bbox=bbox)
     building_parts = load_spain_parts_gml(joinpath(path, "raw", filenames[parts_name]); bbox=bbox)
     buildings_with_floors = relate_floors(buildings, building_parts)
+
     GeoDataFrames.write(joinpath(path, "buildings.geojson"), buildings_with_floors)
     return buildings_with_floors
 end
@@ -218,12 +226,11 @@ end
 
 loads the files saved by `preprocess_spain_subregion(...)` from `path/buildings.geojson` and adds metadata for projection.
 """
-function load_spain_processed_buildings(path; bbox=nothing)
+function load_spain_processed_buildings(path; bbox=nothing, floor_height=4.0)
     filepath = joinpath(path, "buildings.geojson")
     @assert isfile(filepath) "$filepath does not exist."
-    @show filepath
     df = GeoDataFrames.read(filepath)
-    if bbox === nothing
+    if bbox == nothing
         bbox = BoundingBox(df.geometry)
     else
         # clip dataframe
@@ -231,6 +238,8 @@ function load_spain_processed_buildings(path; bbox=nothing)
         apply_wsg_84!(bbox_arch)
         filter!(:geometry => x -> intersects(x, bbox_arch), df)
     end
+    transform!(df, :nFloors_overlap => ByRow(l -> l * floor_height) => :height_overlap)
+    metadata!(df, "assumed_floor_height", floor_height; style=:note)
     metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon) / 2; style=:note)
     metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat) / 2; style=:note)
     convex_report(df)
