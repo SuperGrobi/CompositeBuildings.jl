@@ -9,12 +9,14 @@ using CoolWalksUtils
 using Dates
 using BenchmarkTools
 using GeoDataFrames
+using Extents
 
 datapath = joinpath(homedir(), "Desktop/Masterarbeit/CoolWalksAnalysis/data/exp_raw/")
 
 
 
-c = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"); bbox=(minlon=-1.2, minlat=52.89, maxlon=-1.165, maxlat=52.92))
+c = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"); extent=Extent(X=(-1.2, -1.18), Y=(52.89, 52.92)))
+c = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"))
 d = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"); bbox=(minlon=-1.2, minlat=52.89, maxlon=-1.165, maxlat=52.92))
 filter!(:id => i -> rand() > 0.5, d)
 
@@ -144,8 +146,9 @@ end
 using Dates
 
 
-b = load_new_york_shapefiles(joinpath(datapath, "manhattan/manhattan.shp"))
+b = load_new_york_shapefiles(joinpath(datapath, "manhattan/manhattan.shp"); extent=Extent(X=(-73.97, -73.94), Y=(40.6, 40.9)))
 
+metadata(b)
 
 p = ArchGDAL.pointonsurface.(b.geometry)
 g = b.geometry

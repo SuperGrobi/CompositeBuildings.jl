@@ -1,8 +1,7 @@
 """
-
     parse_polygon_string(polystring)
 
-parses a string of the form `"lat1 lon1 lat2 lon2..."` or `"lat1\tlon1\tlat2\tlon2..."`
+parses a string of the form `"lat1 lon1 lat2 lon2..."` or `"lat1\\tlon1\\tlat2\\tlon2..."`
 into an `ArchGDAL` polygon.
 """
 function parse_polygon_string(polystring)
@@ -19,10 +18,9 @@ function parse_subregion_id(srs)
 end
 
 """
-
     parse_spain_xml(url)
 
-Reads an XML Document from the Spanish Cadastral Dataset (see (here)[https://www.catastro.minhap.es/INSPIRE/buildings/ES.SDGC.BU.atom.xml] for an example)
+Reads an XML Document from the Spanish Cadastral Dataset (see [here](https://www.catastro.minhap.es/INSPIRE/buildings/ES.SDGC.BU.atom.xml) for an example)
 and parses it into a dataframe containing information about the regions described within it.
 """
 function parse_spain_xml(url)
@@ -46,7 +44,6 @@ function parse_spain_xml(url)
 end
 
 """
-
     download_spain_overview()
 
 Downloads and parses the xml file at https://www.catastro.minhap.es/INSPIRE/buildings/ES.SDGC.BU.atom.xml
@@ -57,7 +54,6 @@ function download_spain_overview()
 end
 
 """
-
     download_spain_region_overview(region_id, spain_overview=download_spain_overview())
 
 Downloads and parses the xml corresponding to the `region_id` from the cadastral dataset.
@@ -69,7 +65,6 @@ function download_spain_region_overview(region_id, spain_overview=download_spain
 end
 
 """
-
     download_spain_subregion(url, savepath)
 
 Downloads the zip file at `url` (element of `download_spain_region_overview(...).url`) to `savepath.zip`,
@@ -89,7 +84,6 @@ function download_spain_subregion(url, savepath)
 end
 
 """
-
     load_spain_buildings_gml(path; bbox=nothing)
 
 Loads the file at `path` with `GeoDataFrames`, and applies some transformations that only make sense if it is a
@@ -143,7 +137,6 @@ function load_spain_buildings_gml(path; bbox=nothing)
 end
 
 """
-
     load_spain_parts_gml(path; bbox=nothing)
 
 Loads the file at `path` with `GeoDataFrames`, and applies some transformations that only make sense if it is a
@@ -174,10 +167,9 @@ function load_spain_parts_gml(path; bbox=nothing)
 end
 
 """
-
     relate_floors(buildings, buildings_parts)
 
-Infers the number of floors a building in `buildings` might have, given the data present in the its constituent `buildings_parts` by various different methods.
+Infers the number of floors a building in `buildings` might have, given the data present in its constituent `buildings_parts` by various different methods.
 """
 function relate_floors(buildings, buildings_parts)
     project_local!(buildings)
@@ -201,9 +193,7 @@ function relate_floors(buildings, buildings_parts)
 end
 
 """
-
     preprocess_spain_subregion(path; bbox=nothing)
-
 
 Loads buildings and building parts form `path/raw`, and save the result of `relate_floors(...)` to `path/buildings.geojson`
 """
@@ -221,10 +211,11 @@ function preprocess_spain_subregion(path; bbox=nothing)
 end
 
 """
-
     load_spain_processed_buildings(path; bbox=nothing)
 
 loads the files saved by `preprocess_spain_subregion(...)` from `path/buildings.geojson` and adds metadata for projection.
+
+The returned `DataFrame` fulfills the requirements to be used as a source for building data.
 """
 function load_spain_processed_buildings(path; bbox=nothing, floor_height=4.0)
     filepath = joinpath(path, "buildings.geojson")
