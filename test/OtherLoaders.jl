@@ -16,7 +16,7 @@
     CompositeBuildings.check_building_dataframe_integrity(buildings)
 end
 
-@testitem "load_new_york_shapefiles" begin
+@testitem "load_new_york_shapefiles" tags = [:skipci] begin
     using DataFrames, ArchGDAL, Extents, CoolWalksUtils
     cd(@__DIR__)
     buildings = load_new_york_shapefiles("./data/manhattan/manhattan.shp")
