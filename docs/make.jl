@@ -12,16 +12,17 @@ makedocs(;
         prettyurls=get(ENV, "CI", "false") == "true",
         canonical="https://SuperGrobi.github.io/CompositeBuildings.jl",
         edit_link="main",
-        assets=String[],
+        assets=String[]
     ),
     pages=[
         "Home" => "index.md",
-        "Loading Data" => "OtherLoaders.md",
+        "Loading Spain Buildings" => "SpainLoaders.md",
+        "Loading Buildings" => "OtherLoaders.md",
         "Shadow Casting" => "ShadowCasting.md"
-    ],
+    ]
 )
 
 deploydocs(;
     repo="github.com/SuperGrobi/CompositeBuildings.jl",
-    devbranch="main",
+    devbranch="main"
 )
