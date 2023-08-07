@@ -1,8 +1,3 @@
-using CompositeBuildings
-using CoolWalksUtils
-using ArchGDAL
-using DataFrames
-using Test
+using TestItemRunner
 
-include("OtherLoaders.jl")
-include("ShadowCasting.jl")
+@run_package_tests verbose = true

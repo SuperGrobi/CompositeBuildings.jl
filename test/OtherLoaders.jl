@@ -33,7 +33,3 @@ end
 
     CompositeBuildings.check_building_dataframe_integrity(buildings)
 end
-
-@testset "load_spain_shapefiles" begin
-    @test_skip "add local tests to check if loading of spain shapefiles is happening correctly"
-end
