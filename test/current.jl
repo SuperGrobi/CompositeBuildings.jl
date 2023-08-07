@@ -20,6 +20,9 @@ c = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"))
 d = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"); bbox=(minlon=-1.2, minlat=52.89, maxlon=-1.165, maxlat=52.92))
 filter!(:id => i -> rand() > 0.5, d)
 
+
+
+
 sundir
 @benchmark cast_shadow(c, :height_mean, sundir)
 
@@ -320,3 +323,26 @@ drivers = DataFrame(:name => keys(ArchGDAL.listdrivers()) |> collect, :descripti
 draw(floors.geometry)
 
 bs = load_spain_processed_buildings((joinpath(datapath, "spain", "2078")))
+
+
+using Dates
+using CoolWalksUtils
+using GeoInterface
+
+# REWORK THINGS
+c = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"))
+b = load_new_york_shapefiles(joinpath(datapath, "manhattan/manhattan.shp"))
+
+using BenchmarkTools
+
+cast_shadows(c, DateTime(2023, 8, 7, 14, 30))
+
+cast_shadows(b, DateTime(2023, 8, 7, 14, 30))
+
+@benchmark cast_shadows(c, DateTime(2023, 8, 7, 14, 30))
+
+
+3
+
+
+@benchmark cast_shadows(b, DateTime(2023, 8, 7, 14, 30))

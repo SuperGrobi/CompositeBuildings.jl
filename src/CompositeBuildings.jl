@@ -6,13 +6,17 @@ using GeoInterface
 using DataFrames
 using GeoDataFrames
 using GeoFormatTypes
+
 using ProgressMeter
+using ProgressBars
+
 using SpatialIndexing
 using HTTP
 using Downloads
 using LightXML
 using TimeZones
 using Extents
+using LinearAlgebra
 
 
 split_multi_poly(g::ArchGDAL.IGeometry{ArchGDAL.wkbPolygon}, id) = [g], [string(id)]
@@ -57,7 +61,7 @@ export download_spain_overview,
     load_spain_processed_buildings
 include("SpainLoaders.jl")
 
-export cast_shadow
+export cast_shadows
 include("ShadowCasting.jl")
 
 

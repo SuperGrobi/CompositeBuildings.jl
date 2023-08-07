@@ -12,6 +12,10 @@ function collection(stuff)
     return collection
 end
 
+@testitem "remember the shadow tests" begin
+    @test_broken "these tests do not run with the test call."
+end
+
 @testset "shadow casting" begin
     @testset "shadow_cleanup" begin
         poly1 = ArchGDAL.createpolygon(square(0, 0, 1))
