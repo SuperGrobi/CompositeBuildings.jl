@@ -21,7 +21,7 @@ split_multi_poly(g::ArchGDAL.IGeometry{ArchGDAL.wkbMultiPolygon}, id) = collect(
 """
     convex_report(df)
 
-Little utility to log how many of the geometries in `df` are convex.
+`Little utility to log how many of the entries in `df.geometry` are convex.
 """
 function convex_report(df)
     n_conv = sum(is_convex, df.geometry)
@@ -29,7 +29,7 @@ function convex_report(df)
 end
 
 """
-check_building_dataframe_integrity(df) 
+    check_building_dataframe_integrity(df) 
 
 Checks if `df` conforms to the technical requirements needed to be considered as a source for building data.
 """
