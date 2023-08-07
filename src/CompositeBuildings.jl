@@ -12,11 +12,31 @@ using HTTP
 using Downloads
 using LightXML
 using TimeZones
+using Extents
 
 
 split_multi_poly(g::ArchGDAL.IGeometry{ArchGDAL.wkbPolygon}, id) = [g], [string(id)]
 split_multi_poly(g::ArchGDAL.IGeometry{ArchGDAL.wkbMultiPolygon}, id) = collect(getgeom(g)), string(id) * "_" .* string.(1:ngeom(g))
 
+
+"""
+check_building_dataframe_integrity(df) 
+
+Checks if `df` conforms to the technical requirements needed to be considered as a source for building data.
+"""
+function check_building_dataframe_integrity(df)
+    colnames = Symbol.(names(df))
+    needed_names = [:id, :height, :geometry]
+    for i in needed_names
+        @assert i in colnames "no column of df is named \"$i\"."
+    end
+    for g in df.geometry
+        @assert g isa ArchGDAL.IGeometry{ArchGDAL.wkbPolygon} "not all entries in the :geometry column are ArchGDAL polygons."
+    end
+
+    @assert "observatory" in keys(metadata(df)) "the dataframe has no \"observatory\" metadata."
+    @assert metadata(df, "observatory") isa ShadowObservatory "the provided obervatory is not of type ShadowObservatory."
+end
 
 export relate_buildings
 include("relate_buildings.jl")
