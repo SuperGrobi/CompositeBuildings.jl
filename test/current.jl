@@ -20,7 +20,6 @@ c = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"))
 d = load_british_shapefiles(joinpath(datapath, "clifton/clifton.shp"); bbox=(minlon=-1.2, minlat=52.89, maxlon=-1.165, maxlat=52.92))
 filter!(:id => i -> rand() > 0.5, d)
 
-@benchmark relate_buildings(d, c)
 sundir
 @benchmark cast_shadow(c, :height_mean, sundir)
 

@@ -47,9 +47,6 @@ function check_building_dataframe_integrity(df)
     @assert metadata(df, "observatory") isa ShadowObservatory "the provided obervatory is not of type ShadowObservatory."
 end
 
-export relate_buildings
-include("relate_buildings.jl")
-
 export load_british_shapefiles, load_new_york_shapefiles
 include("OtherLoaders.jl")
 
@@ -67,5 +64,4 @@ include("ShadowCasting.jl")
 # TODO: Rework OtherLoaders
 # TODO: Rework ShadowCasting
 # TODO: Rework SpainLoaders
-# TODO: decide what to do with relate_buildings
 end
