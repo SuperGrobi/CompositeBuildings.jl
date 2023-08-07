@@ -63,9 +63,4 @@ include("SpainLoaders.jl")
 
 export cast_shadows
 include("ShadowCasting.jl")
-
-
-# TODO: Rework OtherLoaders
-# TODO: Rework ShadowCasting
-# TODO: Rework SpainLoaders
 end
