@@ -11,6 +11,7 @@ using SpatialIndexing
 using HTTP
 using Downloads
 using LightXML
+using TimeZones
 
 
 split_multi_poly(g::ArchGDAL.IGeometry{ArchGDAL.wkbPolygon}, id) = [g], [string(id)]
@@ -32,4 +33,10 @@ include("SpainLoaders.jl")
 
 export cast_shadow
 include("ShadowCasting.jl")
+
+
+# TODO: Rework OtherLoaders
+# TODO: Rework ShadowCasting
+# TODO: Rework SpainLoaders
+# TODO: decide what to do with relate_buildings
 end
