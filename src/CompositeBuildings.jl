@@ -18,6 +18,15 @@ using Extents
 split_multi_poly(g::ArchGDAL.IGeometry{ArchGDAL.wkbPolygon}, id) = [g], [string(id)]
 split_multi_poly(g::ArchGDAL.IGeometry{ArchGDAL.wkbMultiPolygon}, id) = collect(getgeom(g)), string(id) * "_" .* string.(1:ngeom(g))
 
+"""
+    convex_report(df)
+
+Little utility to log how many of the geometries in `df` are convex.
+"""
+function convex_report(df)
+    n_conv = sum(is_convex, df.geometry)
+    @info "$n_conv out of $(nrow(df)) Buildings are convex. ($(round(100n_conv/nrow(df), digits=1))%)"
+end
 
 """
 check_building_dataframe_integrity(df) 

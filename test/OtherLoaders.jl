@@ -12,11 +12,26 @@
     @test nrow(buildings_cropped) == 1715
     @test ncol(buildings_cropped) == 9
     @test repr(ArchGDAL.getspatialref(first(buildings_cropped.geometry))) == repr(OSM_ref[])
+
     CompositeBuildings.check_building_dataframe_integrity(buildings)
 end
 
-@testset "load_new_york_shapefiles" begin
-    @test_skip "add local tests to check if loading of new york is happening correctly"
+@testitem "load_new_york_shapefiles" begin
+    using DataFrames, ArchGDAL, Extents, CoolWalksUtils
+    cd(@__DIR__)
+    buildings = load_new_york_shapefiles("./data/manhattan/manhattan.shp")
+    @test nrow(buildings) == 45977
+    @test ncol(buildings) == 16
+    @test repr(ArchGDAL.getspatialref(first(buildings.geometry))) == repr(OSM_ref[])
+
+    CompositeBuildings.check_building_dataframe_integrity(buildings)
+
+    buildings_cropped = load_new_york_shapefiles("./data/manhattan/manhattan.shp"; extent=Extent(X=(-73.97, -73.94), Y=(40.6, 40.9)))
+    @test nrow(buildings_cropped) == 16674
+    @test ncol(buildings_cropped) == 16
+    @test repr(ArchGDAL.getspatialref(first(buildings_cropped.geometry))) == repr(OSM_ref[])
+
+    CompositeBuildings.check_building_dataframe_integrity(buildings)
 end
 
 @testset "load_spain_shapefiles" begin
