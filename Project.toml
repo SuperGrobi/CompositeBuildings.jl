@@ -24,6 +24,7 @@ TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 [compat]
 ArchGDAL = "0.10"
 DataFrames = "1.4"
+Extents = "0.1"
 GeoDataFrames = "0.3"
 GeoFormatTypes = "0.4"
 GeoInterface = "1"
