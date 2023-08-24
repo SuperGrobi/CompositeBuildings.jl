@@ -1,8 +1,7 @@
 """
-
     parse_polygon_string(polystring)
 
-parses a string of the form `"lat1 lon1 lat2 lon2..."` or `"lat1\tlon1\tlat2\tlon2..."`
+parses a string of the form `"lat1 lon1 lat2 lon2..."` or `"lat1\\tlon1\\tlat2\\tlon2..."`
 into an `ArchGDAL` polygon.
 """
 function parse_polygon_string(polystring)
@@ -19,10 +18,9 @@ function parse_subregion_id(srs)
 end
 
 """
-
     parse_spain_xml(url)
 
-Reads an XML Document from the Spanish Cadastral Dataset (see (here)[https://www.catastro.minhap.es/INSPIRE/buildings/ES.SDGC.BU.atom.xml] for an example)
+Reads an XML Document from the Spanish Cadastral Dataset (see [here](https://www.catastro.minhap.es/INSPIRE/buildings/ES.SDGC.BU.atom.xml) for an example)
 and parses it into a dataframe containing information about the regions described within it.
 """
 function parse_spain_xml(url)
@@ -46,7 +44,6 @@ function parse_spain_xml(url)
 end
 
 """
-
     download_spain_overview()
 
 Downloads and parses the xml file at https://www.catastro.minhap.es/INSPIRE/buildings/ES.SDGC.BU.atom.xml
@@ -57,7 +54,6 @@ function download_spain_overview()
 end
 
 """
-
     download_spain_region_overview(region_id, spain_overview=download_spain_overview())
 
 Downloads and parses the xml corresponding to the `region_id` from the cadastral dataset.
@@ -69,7 +65,6 @@ function download_spain_region_overview(region_id, spain_overview=download_spain
 end
 
 """
-
     download_spain_subregion(url, savepath)
 
 Downloads the zip file at `url` (element of `download_spain_region_overview(...).url`) to `savepath.zip`,
@@ -89,25 +84,18 @@ function download_spain_subregion(url, savepath)
 end
 
 """
-
-    load_spain_buildings_gml(path; bbox=nothing)
+    load_spain_buildings_gml(path; extent=nothing)
 
 Loads the file at `path` with `GeoDataFrames`, and applies some transformations that only make sense if it is a
 buildings file from the spanish cadastral dataset.
 """
-function load_spain_buildings_gml(path; bbox=nothing)
+function load_spain_buildings_gml(path; extent=nothing)
     df = GeoDataFrames.read(path)
     df.myArea = ArchGDAL.geomarea.(df.geometry)
     project_back!(df)
 
-    if bbox === nothing
-        bbox = BoundingBox(df.geometry)
-    else
-        # clip dataframe
-        bbox_arch = createpolygon([(bbox.minlon, bbox.minlat), (bbox.minlon, bbox.maxlat), (bbox.maxlon, bbox.maxlat), (bbox.maxlon, bbox.minlat), (bbox.minlon, bbox.minlat)])
-        apply_wsg_84!(bbox_arch)
-        filter!(:geometry => x -> intersects(x, bbox_arch), df)
-    end
+    apply_extent(df, extent)
+
     df.nFloors_approx = df.value ./ df.myArea
     select!(
         df, :localId => :id,
@@ -123,7 +111,6 @@ function load_spain_buildings_gml(path; bbox=nothing)
         :informationSystem
     )
 
-
     # check if there are some buildings with actual floors. If not, delete the column
     missing_floors = count(ismissing, df.nFloors)
     if missing_floors != nrow(df)
@@ -136,54 +123,53 @@ function load_spain_buildings_gml(path; bbox=nothing)
     transform!(df, [:geometry, :id] => ByRow(split_multi_poly) => [:geometry, :id])
     df = flatten(df, [:geometry, :id])
 
-    metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon) / 2; style=:note)
-    metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat) / 2; style=:note)
+    set_observatory!(df, "SpainRawBuildingsObservatory", tz"Europe/Madrid"; source=[:geometry])
     convex_report(df)
     return df
 end
 
 """
-
-    load_spain_parts_gml(path; bbox=nothing)
+    load_spain_parts_gml(path; extent=nothing)
 
 Loads the file at `path` with `GeoDataFrames`, and applies some transformations that only make sense if it is a
 buildingparts file from the spanish cadastral dataset.
 """
-function load_spain_parts_gml(path; bbox=nothing)
+function load_spain_parts_gml(path; extent=nothing)
     df = GeoDataFrames.read(path)
     dropmissing!(df, :numberOfFloorsAboveGround)
     #filter!(:numberOfFloorsAboveGround => <(70), df)
     df.myArea = ArchGDAL.geomarea.(df.geometry)
     project_back!(df)
 
-    if bbox === nothing
-        bbox = BoundingBox(df.geometry)
-    else
-        # clip dataframe
-        bbox_arch = createpolygon([(bbox.minlon, bbox.minlat), (bbox.minlon, bbox.maxlat), (bbox.maxlon, bbox.maxlat), (bbox.maxlon, bbox.minlat), (bbox.minlon, bbox.minlat)])
-        apply_wsg_84!(bbox_arch)
-        filter!(:geometry => x -> intersects(x, bbox_arch), df)
-    end
+    apply_extent!(df, extent; source=[:geometry])
+
     select!(df, :localId => :id, :geometry, :numberOfFloorsAboveGround => :nFloors, :myArea, :gml_id)
     transform!(df, [:geometry, :id] => ByRow(split_multi_poly) => [:geometry, :id])
     df = flatten(df, [:geometry, :id])
     filter!(:geometry => ArchGDAL.isvalid, df)
     transform!(df, :id => ByRow(id -> split(id, "_part")[1]) => :building_id)
+
     convex_report(df)
     return df
 end
 
 """
-
     relate_floors(buildings, buildings_parts)
 
-Infers the number of floors a building in `buildings` might have, given the data present in the its constituent `buildings_parts` by various different methods.
+Infers the number of floors a building in `buildings` might have, given the data present in its constituent `buildings_parts` by various different methods:
+
+- `nFloors_overlap`: average number of floors in all parts, weighed by intersection area (overlap) between each part and the building.
+- `nFloors_approx`: given `area` in the dataset divided by area of the footprint (`myArea`). Assumes that `area` is a "usable area".
+- `nFloors_part_approx`: given `area` in the dataset divided by the total footprint-area of all parts (`myArea_part`). Assumes that the given area is some kind of "usable area".
+- `maxFloors_part`: maximum value of floors in all parts associated with building.
 """
 function relate_floors(buildings, buildings_parts)
     project_local!(buildings)
-    project_local!(buildings_parts, metadata(buildings, "center_lon"), metadata(buildings, "center_lat"))
+    project_local!(buildings_parts, metadata(buildings, "observatory"))
+
     all_data = innerjoin(buildings, buildings_parts, on=:building_id, renamecols="" => "_part")
     transform!(all_data, [:geometry, :geometry_part] => ByRow((a, b) -> ArchGDAL.geomarea(ArchGDAL.intersection(a, b))) => :overlap)
+
     all_data_grouped = groupby(all_data, :id)
     all_data_combined = combine(
         all_data_grouped, names(buildings) .=> first .=> names(buildings),
@@ -201,19 +187,17 @@ function relate_floors(buildings, buildings_parts)
 end
 
 """
-
-    preprocess_spain_subregion(path; bbox=nothing)
-
+    preprocess_spain_subregion(path; extent=nothing)
 
 Loads buildings and building parts form `path/raw`, and save the result of `relate_floors(...)` to `path/buildings.geojson`
 """
-function preprocess_spain_subregion(path; bbox=nothing)
+function preprocess_spain_subregion(path; extent=nothing)
     filenames = readdir(joinpath(path, "raw"))
     buildings_name = findfirst(n -> occursin("building.gml", n), filenames)
     parts_name = findfirst(n -> occursin("buildingpart.gml", n), filenames)
 
-    buildings = load_spain_buildings_gml(joinpath(path, "raw", filenames[buildings_name]); bbox=bbox)
-    building_parts = load_spain_parts_gml(joinpath(path, "raw", filenames[parts_name]); bbox=bbox)
+    buildings = load_spain_buildings_gml(joinpath(path, "raw", filenames[buildings_name]); extent)
+    building_parts = load_spain_parts_gml(joinpath(path, "raw", filenames[parts_name]); extent)
     buildings_with_floors = relate_floors(buildings, building_parts)
 
     GeoDataFrames.write(joinpath(path, "buildings.geojson"), buildings_with_floors)
@@ -221,27 +205,27 @@ function preprocess_spain_subregion(path; bbox=nothing)
 end
 
 """
-
-    load_spain_processed_buildings(path; bbox=nothing)
+    load_spain_processed_buildings(path; extent=nothing, floor_height=4.0)
 
 loads the files saved by `preprocess_spain_subregion(...)` from `path/buildings.geojson` and adds metadata for projection.
+
+Uses `floor_height` to convert `nFloor_overlap` to building height.
+
+The returned `DataFrame` fulfills the requirements to be used as a source for building data.
 """
-function load_spain_processed_buildings(path; bbox=nothing, floor_height=4.0)
+function load_spain_processed_buildings(path; extent=nothing, floor_height=4.0)
     filepath = joinpath(path, "buildings.geojson")
     @assert isfile(filepath) "$filepath does not exist."
     df = GeoDataFrames.read(filepath)
-    if bbox == nothing
-        bbox = BoundingBox(df.geometry)
-    else
-        # clip dataframe
-        bbox_arch = createpolygon([(bbox.minlon, bbox.minlat), (bbox.minlon, bbox.maxlat), (bbox.maxlon, bbox.maxlat), (bbox.maxlon, bbox.minlat), (bbox.minlon, bbox.minlat)])
-        apply_wsg_84!(bbox_arch)
-        filter!(:geometry => x -> intersects(x, bbox_arch), df)
-    end
-    transform!(df, :nFloors_overlap => ByRow(l -> l * floor_height) => :height_overlap)
+
+    apply_extent!(df, extent; source=[:geometry])
+
+    transform!(df, :nFloors_overlap => ByRow(l -> l * floor_height) => :height)
     metadata!(df, "assumed_floor_height", floor_height; style=:note)
-    metadata!(df, "center_lon", (bbox.minlon + bbox.maxlon) / 2; style=:note)
-    metadata!(df, "center_lat", (bbox.minlat + bbox.maxlat) / 2; style=:note)
+
+    set_observatory!(df, "SpainBuildingsObservatory", tz"Europe/Madrid"; source=[:geometry])
+
     convex_report(df)
+    check_building_dataframe_integrity(df)
     return df
 end

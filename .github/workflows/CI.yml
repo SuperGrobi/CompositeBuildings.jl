@@ -20,10 +20,12 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.8'
+          - '1.9'
           - 'nightly'
         os:
           - ubuntu-latest
+          - windows-latest
+          - macOS-latest
         arch:
           - x64
     steps:
@@ -36,14 +38,15 @@ jobs:
         with:
             ssh-private-key: ${{ secrets.COOLWALKSUTILS_PRIVATE_KEY }}
       - name: Clone CoolWalksUtils.jl
-        run: git clone https://github.com/SuperGrobi/CoolWalksUtils.jl
+        run: git clone https://github.com/SuperGrobi/CoolWalksUtils.jl ../CoolWalksUtils.jl
       - name: Install CoolWalksUtils repo
-        run: julia --project -e 'using Pkg; Pkg.add(path="./CoolWalksUtils.jl")'
+        shell: julia --color=yes --project=. {0}
+        run: using Pkg; Pkg.add(path="../CoolWalksUtils.jl")
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
-          GITHUB_CI: true
+          RUNNING_IN_GITHUB_CI: true
   docs:
     name: Documentation
     runs-on: ubuntu-latest
