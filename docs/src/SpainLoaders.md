@@ -1,6 +1,9 @@
 # Spain Building Loaders and Utilities
 ## Introduction
-Spain provides easy access to their cadastral dataset of building footprints and metadata. We provide some functions to inspect, download, preprocess and load the available data.
+Spain provides easy access to their [cadastral
+dataset](https://www.catastro.minhap.es/webinspire/index.html) of building
+footprints and metadata. We provide some functions to inspect, download,
+preprocess and load the available data.
 
 The returned `DataFrames` conform to the requirements needed to be a source for building data.
 
