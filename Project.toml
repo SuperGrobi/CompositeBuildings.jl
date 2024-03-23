@@ -1,7 +1,7 @@
 name = "CompositeBuildings"
 uuid = "a870b4e5-37c8-4ee1-9e3a-8b7ad2177db1"
 authors = ["Henrik Wolf <henrik-wolf@freenet.de> and contributors"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
