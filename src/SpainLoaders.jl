@@ -94,7 +94,7 @@ function load_spain_buildings_gml(path; extent=nothing)
     df.myArea = ArchGDAL.geomarea.(df.geometry)
     project_back!(df)
 
-    apply_extent(df, extent)
+    apply_extent!(df, extent)
 
     df.nFloors_approx = df.value ./ df.myArea
     select!(
